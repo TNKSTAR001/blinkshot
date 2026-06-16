@@ -130,6 +130,12 @@ export default function Home() {
               <Logo />
             </a>
           </div>
+          <a
+            href="/game"
+            className="absolute left-4 top-4 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-300 transition hover:bg-cyan-500/20"
+          >
+            🚀 Star Trader
+          </a>
           <div>
             <label className="text-xs text-gray-200">
               [Optional] Add your{" "}
