@@ -37,6 +37,13 @@
   .facBtn:hover { filter: brightness(1.35); }
   .facBtn.on { color: #fff; font-weight: 600; box-shadow: 0 0 10px var(--c), inset 0 0 6px #0008; border-color: var(--c); }
   #facInfo { font-size: 11px; line-height: 1.5; background: #0b1122; border: 1px solid #1a2748; border-radius: 6px; padding: 8px 10px; min-height: 74px; }
+  /* diplomacy */
+  #diploList { display: flex; flex-direction: column; gap: 4px; }
+  .diploRow { display: grid; grid-template-columns: 1fr 66px; gap: 6px; align-items: center; }
+  .diploName { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 8px; border-left: 3px solid var(--dc,#334); }
+  .diploState { padding: 6px 0; text-align: center; font-size: 10.5px; letter-spacing: .6px; border: 1px solid var(--bord); border-radius: 5px; background: var(--card2); cursor: pointer; user-select: none; }
+  .diploState.war { color: #ff9a9a; border-color: #6e2438; background: #2a1017; }
+  .diploState.peace { color: #88ffad; border-color: #2c6e3a; background: #10251a; }
   #facInfo b { font-size: 12px; }
   #facInfo .buff { color: #7dff9e; }
   #facInfo .weak { color: #ff8080; }
@@ -157,6 +164,17 @@
       </div>
     </details>
     <details class="sec" open>
+      <summary>Diplomacy</summary>
+      <div class="secBody">
+        <div class="lbl">Relations for <span id="diploFacName" style="color:var(--gold)">selected faction</span></div>
+        <div id="diploList"></div>
+        <div class="row" style="margin-top:7px">
+          <div class="aBtn" id="btnAllPeace">All Peace</div>
+          <div class="aBtn" id="btnAllWar">All War</div>
+        </div>
+      </div>
+    </details>
+    <details class="sec" open>
       <summary>Deploy Fleet</summary>
       <div class="secBody">
         <div class="lbl">Hull class</div>
@@ -210,7 +228,8 @@
     </details>
     <div id="hints">
       <b>LMB</b> deploy (drag to paint) · <b>RMB</b> delete · <b>Wheel</b> zoom · <b>MMB / Shift+drag</b> pan · <b>Space</b> pause · <b>F</b> fullscreen<br>
-      <b>Touch:</b> choose Deploy / Move / Follow / Erase · two fingers to pan &amp; pinch-zoom
+      <b>Touch:</b> choose Deploy / Move / Follow / Erase / Nova · two fingers to pan &amp; pinch-zoom<br>
+      <b>Diplomacy:</b> toggle any faction pair between War &amp; Peace · <b>☢ Nova Bomb</b> tool: click to vaporise every ship in a huge blast
     </div>
   </div>
   <div id="cvWrap">
@@ -223,6 +242,7 @@
         <div class="tBtn toolBtn" data-tool="move">Move</div>
         <div class="tBtn toolBtn" data-tool="follow">Follow</div>
         <div class="tBtn toolBtn" data-tool="erase">Erase</div>
+        <div class="tBtn toolBtn" data-tool="nova" id="btnNovaTool" title="Nova Shock Bomb — click the map to vaporise every ship in a huge blast">☢ Nova Bomb</div>
       </div>
       <div class="tBtn" id="btnPause">⏸ Pause</div>
       <div class="speedCtl" id="speedCtl">
@@ -312,6 +332,24 @@ const FACTIONS = {
     mod:{hp:1.3, sh:.9, dmg:1, sp:.8, rof:1.1, rng:1, shRegen:.5, hullRegen:0, crit:0, dodge:0, armor:.12} },
 };
 Object.values(FACTIONS).forEach(f=>f.kills=0);
+
+/* ---------------- faction diplomacy / relations ---------------- */
+/* Every distinct faction pair defaults to 'war'. Setting a pair to 'peace'
+   makes those two factions ignore each other: they stop targeting and can no
+   longer damage one another (they still won't share formations or repairs). */
+const FACTION_IDS = Object.keys(FACTIONS);
+const factionRelations = {}; // `${a}|${b}` (sorted) -> 'war' | 'peace'
+function relKey(a,b){ return a<b ? a+'|'+b : b+'|'+a; }
+function getRelation(a,b){ return a===b ? 'self' : (factionRelations[relKey(a,b)]||'war'); }
+function setRelation(a,b,state){ if(a!==b) factionRelations[relKey(a,b)]=state; }
+function toggleRelation(a,b){ setRelation(a,b, getRelation(a,b)==='peace' ? 'war' : 'peace'); }
+// Hostility gate used everywhere targeting/damage is decided.
+function areHostile(a,b){ return a!==b && getRelation(a,b)==='war'; }
+
+/* ---------------- Nova Shock Bomb ---------------- */
+// Player-deployed doomsday charge: annihilates EVERY ship (any faction) inside
+// its blast. Diameter is comfortably over 800 (radius 450 -> 900 diameter).
+const NOVA_BOMB_RADIUS = 450;
 
 const FACTION_TACTICS = {
   terran:   { label:'Aegis Screen',      pattern:'shieldLine', posture:'defensive', spacing:1.12, slotPull:.78, rangeBias:.98, minRange:.70 },
@@ -646,10 +684,10 @@ function angDiff(a,b){ let d=(b-a)%TAU; if(d>Math.PI)d-=TAU; if(d<-Math.PI)d+=TA
 function dist2(a,b){ const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 function enemyFacingTarget(s){
-  if(s.target&&!s.target.dead&&s.target.fac!==s.fac&&!s.target.cloak) return s.target;
+  if(s.target&&!s.target.dead&&areHostile(s.target.fac,s.fac)&&!s.target.cloak) return s.target;
   let best=null, bd=Infinity;
   for(const o of ships){
-    if(o.dead||o.fac===s.fac||o.cloak) continue;
+    if(o.dead||!areHostile(o.fac,s.fac)||o.cloak) continue;
     const dd=dist2(s,o);
     if(dd<bd){ bd=dd; best=o; }
   }
@@ -781,7 +819,7 @@ function titanGuardianMatrix(s, dt){
   }
   let shipTarget=null, sd=250*250;
   for(const o of queryCircle(s.x,s.y,250)){
-    if(o.dead||o.fac===s.fac||o.cloak||hullWeight(o.hull)>1) continue;
+    if(o.dead||!areHostile(o.fac,s.fac)||o.cloak||hullWeight(o.hull)>1) continue;
     const dd=dist2(s,o);
     if(dd<sd){ sd=dd; shipTarget=o; }
   }
@@ -890,7 +928,7 @@ function updateSignatureAbilities(s, dt){
     if(s.blink.t<=0){
       let near=null, nd=210*210;
       for(const o of queryCircle(s.x,s.y,210)){
-        if(o.dead||o.fac===s.fac) continue;
+        if(o.dead||!areHostile(o.fac,s.fac)) continue;
         const ddx=o.x-s.x, ddy=o.y-s.y, dd=ddx*ddx+ddy*ddy;
         if(dd<nd){ nd=dd; near=o; }
       }
@@ -910,7 +948,7 @@ function updateSignatureAbilities(s, dt){
       const r2=s.nova.r*s.nova.r, dmg=s.nova.dmg*(FACTIONS[s.fac].mod.dmg||1);
       let hits=0;
       for(const o of queryCircle(s.x,s.y,s.nova.r)){
-        if(o.dead||o.fac===s.fac||o.cloak) continue;
+        if(o.dead||!areHostile(o.fac,s.fac)||o.cloak) continue;
         const ddx=o.x-s.x, ddy=o.y-s.y;
         if(ddx*ddx+ddy*ddy>r2) continue;
         applyDamage(o, dmg, s); hits++;
@@ -1021,7 +1059,7 @@ function pdWallAnchor(fac){
 function pdNearestEnemy(s){
   let best=null, bd=Infinity;
   for(const o of ships){
-    if(o.dead||o.fac===s.fac||o.cloak) continue;
+    if(o.dead||!areHostile(o.fac,s.fac)||o.cloak) continue;
     const dd=dist2(s,o);
     if(dd<bd){ bd=dd; best=o; }
   }
@@ -1387,7 +1425,7 @@ function activeHoldRange(s, main){
 }
 function broadsideTarget(s){
   if(!BROADSIDE_HULLS.has(s.hull)) return null;
-  const enemies=ships.filter(t=>!t.dead&&t.fac!==s.fac&&!t.cloak&&BROADSIDE_HULLS.has(t.hull));
+  const enemies=ships.filter(t=>!t.dead&&areHostile(t.fac,s.fac)&&!t.cloak&&BROADSIDE_HULLS.has(t.hull));
   if(!enemies.length) return null;
   const byDistance=(a,b)=>dist2(s,a)-dist2(s,b);
   const nearestSame=enemies.filter(t=>t.hull===s.hull).sort(byDistance)[0]||null;
@@ -1406,7 +1444,7 @@ function broadsideTarget(s){
 function bombardmentTarget(s){
   let best=null, bd=-1;
   for(const t of ships){
-    if(t.dead||t.fac===s.fac||t.cloak) continue;
+    if(t.dead||!areHostile(t.fac,s.fac)||t.cloak) continue;
     const w=hullWeight(t.hull);
     if(w<1||w>4) continue;
     const dd=dist2(s,t);
@@ -1422,7 +1460,7 @@ function kineticBombTarget(s,w){
   if(!canKineticIntercept(w)) return null;
   let best=null, bd=(w.rng||0)*(w.rng||0);
   for(const sh of shots){
-    if(!sh.kineticTarget||sh.life<=0||sh.fac===s.fac) continue;
+    if(!sh.kineticTarget||sh.life<=0||!areHostile(sh.fac,s.fac)) continue;
     const dx=sh.x-s.x, dy=sh.y-s.y, dd=dx*dx+dy*dy;
     if(dd<bd){ bd=dd; best=sh; }
   }
@@ -1658,7 +1696,7 @@ function updateBaseHub(s, dt){
   const batch=clamp((+baseSpawnConfig.batch||1)|0,1,10);
   const limit=clamp((+baseSpawnConfig.limit||0)|0,0,100);
   hub.t=Math.min(hub.t,rate);
-  const hostile=ships.some(o=>!o.dead&&o.fac!==s.fac&&!o.cloak);
+  const hostile=ships.some(o=>!o.dead&&areHostile(o.fac,s.fac)&&!o.cloak);
   if(!hostile){ hub.t=Math.min(hub.t,rate*.55); return; }
   if(!pool.length||limit<=0){ hub.t=Math.min(hub.t,1); return; }
   const active=ships.reduce((n,o)=>n+(o.parent===s&&!o.dead?1:0),0)+
@@ -1691,7 +1729,7 @@ function findTarget(s){
     // point-defence battleships focus the largest enemy hull, nearest one first
     let best=null, bw=-1, bd=Infinity;
     for(const t of ships){
-      if(t.dead||t.fac===s.fac||t.cloak) continue;
+      if(t.dead||!areHostile(t.fac,s.fac)||t.cloak) continue;
       const w=hullWeight(t.hull), dd=dist2(s,t);
       if(w>bw||(w===bw&&dd<bd)){ bw=w; bd=dd; best=t; }
     }
@@ -1705,7 +1743,7 @@ function findTarget(s){
   if(broadside) return broadside;
   let best=null, bestScore=Infinity;
   for(const t of ships){
-    if(t.dead||t.fac===s.fac||t.cloak) continue;
+    if(t.dead||!areHostile(t.fac,s.fac)||t.cloak) continue;
     let sc=dist2(s,t);
     if(s.bonus&&s.bonus[t.hull]) sc*=.45;
     if(s.bomber){
@@ -1862,7 +1900,7 @@ function updateWrecks(dt){
     // only a dead-stick streaker is a missile: enemy contact detonates it early
     if(w.fighter&&w.mode==='streak'){
       for(const o of queryCircle(w.x,w.y,w.size+46)){
-        if(o.dead||o.fac===w.fac||o.cloak) continue;
+        if(o.dead||!areHostile(o.fac,w.fac)||o.cloak) continue;
         const rr=o.size*.95+w.size*.8;
         if(dist2(w,o)<rr*rr){
           applyDamage(o, w.s.def==='locust'?DRONE_WRECK_IMPACT_DAMAGE:WRECK_IMPACT_DAMAGE, w.s);
@@ -1907,6 +1945,36 @@ function explosion(x,y,size,color){
     parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:.5+Math.random()*.7,maxLife:1.2,r:Math.random()*size/6+1.5,color:Math.random()<.5?color:'#ffb347'});
   }
   parts.push({x,y,vx:0,vy:0,life:.35,maxLife:.35,r:size*1.6,color:'#ffffff',flash:true});
+}
+/* Nova Shock Bomb: a player-planted charge that vaporises every ship of any
+   faction inside its blast (900-diameter radius). Indiscriminate by design. */
+function novaShockBomb(wx, wy){
+  const R=NOVA_BOMB_RADIUS, R2=R*R;
+  const hit=ships.filter(s=>!s.dead && (s.x-wx)*(s.x-wx)+(s.y-wy)*(s.y-wy)<=R2);
+  let bases=[];
+  for(const s of hit){
+    s.hp=0; s.sh=0; s.dead=true;
+    shipExplosion(s); spawnDebris(s);
+    if(s.hull==='base') bases.push(s);
+  }
+  ships=ships.filter(s=>!s.dead);
+  // wipe any in-flight ordnance and mines caught in the blast
+  shots=shots.filter(sh=>(sh.x-wx)*(sh.x-wx)+(sh.y-wy)*(sh.y-wy)>R2);
+  mines=mines.filter(m=>(m.x-wx)*(m.x-wx)+(m.y-wy)*(m.y-wy)>R2);
+  // a destroyed base still collapses its whole faction
+  for(const b of bases) collapseFactionFromBase(b, null);
+  // shockwave visuals: layered expanding rings + a blinding core flash
+  parts.push({x:wx,y:wy,vx:0,vy:0,life:.9,maxLife:.9,r:R*1.02,color:'#ffffff',flash:true});
+  parts.push({x:wx,y:wy,vx:0,vy:0,life:.7,maxLife:.7,r:R*.72,color:'#bfe4ff',flash:true});
+  for(let ring=0;ring<3;ring++){
+    const rr=R*(.55+ring*.22), col=ring?'#7fd4ff':'#ffd27f';
+    for(let i=0;i<60;i++){ const a=i/60*TAU, sp=rr*(2.1+ring*.5);
+      parts.push({x:wx,y:wy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.5+ring*.12,maxLife:.7,r:2.4,color:col});
+    }
+  }
+  for(let i=0;i<5;i++) explosion(wx+(Math.random()-.5)*R*.5, wy+(Math.random()-.5)*R*.5, 60+Math.random()*40, '#ffd27f');
+  refreshScore();
+  toast('☢ NOVA SHOCK BOMB — '+hit.length+' ship'+(hit.length===1?'':'s')+' vaporised');
 }
 /* hull debris: destroyed ships shatter into spinning fragments that fade after 3s */
 const DEBRIS_LIFE=3, DEBRIS_MAX=520;
@@ -2051,7 +2119,7 @@ function detonateMine(m, target){
   if(m.life<=0) return;
   m.life=0;
   for(const o of queryCircle(m.x,m.y,m.trigger)){
-    if(o.dead||o.fac===m.fac||o.cloak) continue;
+    if(o.dead||!areHostile(o.fac,m.fac)||o.cloak) continue;
     disableShip(o,MINE_EMP_DISABLE);
   }
   for(let i=0;i<28;i++){
@@ -2095,7 +2163,7 @@ function updateMines(dt){
       continue;
     }
     for(const o of queryCircle(m.x,m.y,m.trigger)){
-      if(o.dead||o.fac===m.fac||o.cloak) continue;
+      if(o.dead||!areHostile(o.fac,m.fac)||o.cloak) continue;
       detonateMine(m,o);
       break;
     }
@@ -2105,7 +2173,7 @@ function laserMineTarget(s,w){
   let best=null, bestScore=Infinity;
   const rr=w.rng*w.rng;
   for(const m of mines){
-    if(m.life<=0||m.fac===s.fac) continue;
+    if(m.life<=0||!areHostile(m.fac,s.fac)) continue;
     const dx=m.x-s.x, dy=m.y-s.y, dd=dx*dx+dy*dy;
     if(dd>rr) continue;
     const danger=s.size+(m.type==='emp'?m.trigger:34)+72;
@@ -2128,7 +2196,7 @@ function fireLaserAtMine(s,w,m){
 function chainLaserNextTarget(s, from, hit, range){
   let best=null, bestScore=Infinity;
   for(const o of queryCircle(from.x,from.y,range)){
-    if(o.dead||o.fac===s.fac||o.cloak||hit.has(o.uid)) continue;
+    if(o.dead||!areHostile(o.fac,s.fac)||o.cloak||hit.has(o.uid)) continue;
     const dx=o.x-from.x, dy=o.y-from.y, dd=dx*dx+dy*dy;
     const score=dd+hullWeight(o.hull)*180;
     if(score<bestScore){ bestScore=score; best=o; }
@@ -2210,7 +2278,7 @@ function pointDefenseLaserDelay(s){
   return s.hull==='titan' ? TITAN_PD_LASER_MIN+Math.random()*(TITAN_PD_LASER_MAX-TITAN_PD_LASER_MIN) : s.pd.cd;
 }
 function pointDefenseLaserCanTarget(s, sh){
-  if(!sh||sh.life<=0||sh.fac===s.fac) return false;
+  if(!sh||sh.life<=0||!areHostile(sh.fac,s.fac)) return false;
   return s.hull==='titan' ? sh.k==='missile'&&!sh.torpedo : !!sh.torpedo;
 }
 function triggerWeapon(s,w,t){
@@ -2233,7 +2301,7 @@ function fireWeapon(s, w, primary){
   let targets;
   if(w.multi){
     const pool=w.turret?queryCircle(s.x,s.y,w.rng):ships;
-    targets=pool.filter(t=>!t.dead&&t.fac!==s.fac&&!t.cloak&&dist2(s,t)<w.rng*w.rng);
+    targets=pool.filter(t=>!t.dead&&areHostile(t.fac,s.fac)&&!t.cloak&&dist2(s,t)<w.rng*w.rng);
     targets.sort((a,b)=>dist2(s,a)-dist2(s,b));
     targets=targets.slice(0,Math.min(titanMissileBonus?5:3,targets.length));
     if(!targets.length) targets=[primary];
@@ -2377,7 +2445,7 @@ function updateShip(s, dt){
     if(s.cm.t<=0){
       let best=null, bd=CM_RANGE*CM_RANGE;
       for(const sh of shots){
-        if(sh.fac===s.fac||sh.cmTag||sh.uncounterable||(sh.k!=='missile'&&sh.k!=='shell')) continue;
+        if(!areHostile(sh.fac,s.fac)||sh.cmTag||sh.uncounterable||(sh.k!=='missile'&&sh.k!=='shell')) continue;
         const dx=sh.x-s.x, dy=sh.y-s.y, dd=dx*dx+dy*dy;
         if(dd<bd){ bd=dd; best=sh; }
       }
@@ -2429,7 +2497,7 @@ function updateShip(s, dt){
       } else {
         let shipTarget=null, sd=s.pd.r*s.pd.r;
         for(const o of queryCircle(s.x,s.y,s.pd.r)){
-          if(o.dead||o.fac===s.fac||o.cloak) continue;
+          if(o.dead||!areHostile(o.fac,s.fac)||o.cloak) continue;
           const dd=dist2(s,o); if(dd<sd){ sd=dd; shipTarget=o; }
         }
         if(shipTarget){
@@ -2686,7 +2754,7 @@ function updateShip(s, dt){
         // independent of the ship's facing or its current primary target
         let bt=null, bd=w.rng*w.rng, bs=Infinity;
         for(const o of queryCircle(s.x,s.y,w.rng)){
-          if(o.dead||o.fac===s.fac||o.cloak) continue;
+          if(o.dead||!areHostile(o.fac,s.fac)||o.cloak) continue;
           const dd=dist2(s,o);
           if(w.smallFocus){
             const smaller=hullWeight(o.hull)<hullWeight(s.hull);
@@ -2734,7 +2802,7 @@ function flareLure(sh){
   let best=null, bestD=Math.max(26, t.size*.45+18);
   for(const fl of flares){
     if(fl.life<=0) continue;
-    if(fl.fac===sh.fac) continue;
+    if(!areHostile(fl.fac,sh.fac)) continue;
     const abx=t.x-sh.x, aby=t.y-sh.y, len2=abx*abx+aby*aby||1;
     const tt=((fl.x-sh.x)*abx+(fl.y-sh.y)*aby)/len2;
     if(tt<=.05||tt>=.95) continue; // must lie between missile and target
@@ -2750,7 +2818,7 @@ function detonateShot(sh, directTarget){
   if(sh.splash){
     const center=sh.centerSplash||0;
     for(const o of queryCircle(sh.x,sh.y,sh.splash)){
-      if(o===directTarget||o.dead||o.fac===sh.fac) continue;
+      if(o===directTarget||o.dead||!areHostile(o.fac,sh.fac)) continue;
       const d=center?Math.hypot(o.x-sh.x,o.y-sh.y):0;
       const base=center ? (d<=center ? sh.d : sh.d*(sh.outerDamageMul===undefined?.5:sh.outerDamageMul)) : sh.d*.5;
       applyDamage(o, projectileDamage(o,sh,base), attacker);
@@ -2765,7 +2833,7 @@ function detonateShot(sh, directTarget){
 function kineticBombIntercept(sh){
   if(!sh||sh.life<=0||!isKineticKind(sh.k)||sh.kineticTarget) return false;
   for(const bomb of shots){
-    if(bomb===sh||bomb.life<=0||!bomb.kineticTarget||bomb.fac===sh.fac) continue;
+    if(bomb===sh||bomb.life<=0||!bomb.kineticTarget||!areHostile(bomb.fac,sh.fac)) continue;
     const dx=bomb.x-sh.x, dy=bomb.y-sh.y;
     const rr=(bomb.r||4)+(sh.r||2)+8;
     if(dx*dx+dy*dy<rr*rr){
@@ -2789,7 +2857,7 @@ function shotHitSearchRadius(sh){
 }
 function directShotTarget(sh){
   for(const t of queryCircle(sh.x,sh.y,shotHitSearchRadius(sh))){
-    if(t.dead||t.fac===sh.fac||t.cloak||sh.ignore===t||(sh.airburst&&t.hull==='fighter')) continue;
+    if(t.dead||!areHostile(t.fac,sh.fac)||t.cloak||sh.ignore===t||(sh.airburst&&t.hull==='fighter')) continue;
     const dx=t.x-sh.x, dy=t.y-sh.y;
     if(dx*dx+dy*dy < (t.size*.95+sh.r)*(t.size*.95+sh.r)) return t;
   }
@@ -2828,7 +2896,7 @@ function updateShot(sh, dt){
     if(deployWalls.length&&!sh.uncounterable){
       let blocked=false;
       for(const wl of deployWalls){
-        if(sh.fac===wl.fac||wl.s.wallHp<=0||wl.s.deployT<=0) continue;
+        if(!areHostile(sh.fac,wl.fac)||wl.s.wallHp<=0||wl.s.deployT<=0) continue;
         if(segsCross(prevX,prevY,sh.x,sh.y,wl.x1,wl.y1,wl.x2,wl.y2)){
           damageDeployWall({wl,p:segIntersectionPoint(prevX,prevY,sh.x,sh.y,wl.x1,wl.y1,wl.x2,wl.y2)},sh.d,sh.color);
           sh.life=0; blocked=true;
@@ -2841,7 +2909,7 @@ function updateShot(sh, dt){
     if(kineticBombIntercept(sh)) return;
     const hits=queryCircle(sh.x,sh.y,shotHitSearchRadius(sh));
     for(const t of hits){
-      if(t.dead||t.fac===sh.fac||t.cloak||sh.ignore===t||(sh.airburst&&t.hull==='fighter')) continue;
+      if(t.dead||!areHostile(t.fac,sh.fac)||t.cloak||sh.ignore===t||(sh.airburst&&t.hull==='fighter')) continue;
       const dx=t.x-sh.x, dy=t.y-sh.y;
       if(dx*dx+dy*dy < (t.size*.95+sh.r)*(t.size*.95+sh.r)){
         // v3: fighters juke — evade chance scales inversely with projectile speed;
@@ -3337,11 +3405,25 @@ function draw(){
     ctx.beginPath(); ctx.moveTo(b.x1,b.y1); ctx.lineTo(b.x2,b.y2); ctx.stroke();
     ctx.globalAlpha=1;
   }
+
+  // Nova Shock Bomb blast-radius preview follows the cursor while the tool is armed
+  if(activeTool==='nova'){
+    const w=screenToWorld(mouse.px,mouse.py);
+    ctx.save();
+    ctx.globalAlpha=.9; ctx.strokeStyle='#ffd27f'; ctx.lineWidth=Math.max(1.6,2.6/cam.z);
+    ctx.setLineDash([14/cam.z,9/cam.z]);
+    ctx.beginPath(); ctx.arc(w.x,w.y,NOVA_BOMB_RADIUS,0,TAU); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=.16; ctx.fillStyle='#ff7a4d';
+    ctx.beginPath(); ctx.arc(w.x,w.y,NOVA_BOMB_RADIUS,0,TAU); ctx.fill();
+    ctx.globalAlpha=1; ctx.fillStyle='#ffd27f';
+    ctx.beginPath(); ctx.arc(w.x,w.y,5/cam.z,0,TAU); ctx.fill();
+    ctx.restore();
+  }
 }
 
 /* ============================== INPUT ============================== */
 let mouse={x:0,y:0,down:false,pan:false,erase:false,lastSpawn:{x:-999,y:-999},px:0,py:0};
-let activeTool='deploy'; // 'deploy' | 'move' | 'follow' | 'erase' — used by LMB and touch input
+let activeTool='deploy'; // 'deploy' | 'move' | 'follow' | 'erase' | 'nova' — used by LMB and touch input
 const FOLLOW_RING_TIME = 3;
 let followTarget=null, followFac=null, followRingT=0;
 function screenToWorld(mx,my){ return { x:(mx*devicePixelRatio-cw/2)/(cam.z*devicePixelRatio)+cam.x, y:(my*devicePixelRatio-ch/2)/(cam.z*devicePixelRatio)+cam.y }; }
@@ -3405,6 +3487,7 @@ cv.addEventListener('mousedown', e=>{
       e.preventDefault(); return;
     }
     if(activeTool==='move'){ mouse.pan=true; e.preventDefault(); return; }
+    if(activeTool==='nova'){ const w=screenToWorld(mx,my); novaShockBomb(w.x,w.y); e.preventDefault(); return; }
     if(activeTool==='erase'){ mouse.erase=true; eraseAt(mx,my); }
     else { mouse.down=true; trySpawnAt(mx,my,true); }
   }
@@ -3438,6 +3521,7 @@ cv.addEventListener('touchstart', e=>{
       if(target) setFollowTarget(target); else toast('Follow: tap a ship');
     }
     else if(activeTool==='move'){ mouse.pan=true; }
+    else if(activeTool==='nova'){ const w=screenToWorld(mx,my); novaShockBomb(w.x,w.y); }
     else if(activeTool==='erase'){ mouse.erase=true; eraseAt(mx,my); }
     else { mouse.down=true; trySpawnAt(mx,my,true); }
   } else {
@@ -3679,6 +3763,8 @@ function buildUI(){
   $('panelClose').onclick=()=>setMenu(false);
   $('panelBackdrop').onclick=()=>setMenu(false);
   document.querySelectorAll('.toolBtn').forEach(b=>b.onclick=()=>setActiveTool(b.dataset.tool,true));
+  $('btnAllPeace').onclick=()=>{ for(const a of FACTION_IDS) for(const b of FACTION_IDS) if(a<b) setRelation(a,b,'peace'); refreshDiplomacyUI(); toast('All factions at peace'); };
+  $('btnAllWar').onclick=()=>{ for(const a of FACTION_IDS) for(const b of FACTION_IDS) if(a<b) setRelation(a,b,'war'); refreshDiplomacyUI(); toast('All factions at war'); };
   refreshToolButton();
   buildBaseOpsUI();
   refreshBonusButton();
@@ -3709,13 +3795,13 @@ function setActiveTool(tool,announce){
   activeTool=tool;
   refreshToolButton();
   if(announce){
-    const msg=tool==='follow'?'Follow tool: click a ship to track it':tool==='move'?'Move tool: drag to pan safely':tool==='erase'?'Erase tool: tap or drag over ships to remove them':'Deploy tool: tap or drag to place ships';
+    const msg=tool==='follow'?'Follow tool: click a ship to track it':tool==='move'?'Move tool: drag to pan safely':tool==='nova'?'Nova Shock Bomb: click the map to vaporise every ship in a huge blast':tool==='erase'?'Erase tool: tap or drag over ships to remove them':'Deploy tool: tap or drag to place ships';
     toast(msg);
   }
 }
 function refreshToolButton(){
   document.querySelectorAll('.toolBtn').forEach(b=>b.classList.toggle('on',b.dataset.tool===activeTool));
-  cv.style.cursor=activeTool==='erase'?'not-allowed':(activeTool==='move'?'grab':(activeTool==='follow'?'pointer':'crosshair'));
+  cv.style.cursor=activeTool==='erase'?'not-allowed':(activeTool==='move'?'grab':(activeTool==='follow'||activeTool==='nova'?'pointer':'crosshair'));
 }
 function refreshUI(){
   document.querySelectorAll('.facBtn').forEach(b=>b.classList.toggle('on', b.dataset.id===selFac));
@@ -3743,7 +3829,26 @@ function refreshUI(){
     bindHoldInfo(b,id);
     sl.appendChild(b);
   }
+  refreshDiplomacyUI();
   if(infoCurrentId) showShipInfo(infoCurrentId,true);
+}
+function refreshDiplomacyUI(){
+  const list=$('diploList'); if(!list) return;
+  $('diploFacName').textContent=FACTIONS[selFac].name;
+  $('diploFacName').style.color=FACTIONS[selFac].color;
+  list.innerHTML='';
+  for(const id of FACTION_IDS){
+    if(id===selFac) continue;
+    const other=FACTIONS[id], atPeace=getRelation(selFac,id)==='peace';
+    const row=document.createElement('div'); row.className='diploRow';
+    const name=document.createElement('div'); name.className='diploName';
+    name.textContent=other.name; name.style.color=other.color; name.style.setProperty('--dc',other.color);
+    const btn=document.createElement('div'); btn.className='diploState '+(atPeace?'peace':'war');
+    btn.textContent=atPeace?'PEACE':'WAR';
+    btn.onclick=()=>{ toggleRelation(selFac,id); refreshDiplomacyUI(); };
+    row.appendChild(name); row.appendChild(btn);
+    list.appendChild(row);
+  }
 }
 function showShipInfo(id){
   const d=SHIPS[id], h=HULLS[d.hull], m=d.m||{}, f=FACTIONS[selFac].mod;
