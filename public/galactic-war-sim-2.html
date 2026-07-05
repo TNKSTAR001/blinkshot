@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow, noarchive, noimageindex" />
+<title>Galactic War Sim 2</title>
+<style>
+  :root {
+    --bg: #070912;
+    --bg-2: #0d1120;
+    --panel: #121834;
+    --panel-2: #1a2145;
+    --line: #262f5c;
+    --txt: #dfe4ff;
+    --muted: #8b93c9;
+    --accent: #6c7bff;
+    --accent-2: #b06cff;
+    --safe: #4ade80;
+    --quest: #fbbf24;
+    --explicit: #f87171;
+    --danger: #ef4444;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  /* Screenshot deterrent: block text/image selection & callouts */
+  body {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input, textarea { -webkit-user-select: text; user-select: text; }
+  img { -webkit-user-drag: none; user-drag: none; pointer-events: none; }
+  a { color: var(--accent); text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ---------- Lock screen ---------- */
+  #lock {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1b2660 0%, transparent 60%),
+      radial-gradient(900px 500px at 90% 110%, #3a1b60 0%, transparent 55%),
+      var(--bg);
+  }
+  .lock-card {
+    width: min(420px, 92vw);
+    background: linear-gradient(180deg, var(--panel), var(--bg-2));
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 34px 30px;
+    text-align: center;
+    box-shadow: 0 30px 90px rgba(0,0,0,.6);
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px;
+  }
+  .logo {
+    font-size: 30px; font-weight: 800; margin: 4px 0 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lock-card p { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+  .field { position: relative; }
+  input[type="password"], input[type="text"], textarea, select {
+    width: 100%; background: var(--bg-2); border: 1px solid var(--line);
+    color: var(--txt); border-radius: 10px; padding: 12px 14px; font-size: 14px;
+    outline: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  .btn {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color: #fff; border: none; border-radius: 10px; padding: 12px 16px;
+    font-weight: 700; font-size: 14px; width: 100%; margin-top: 14px;
+  }
+  .btn:hover { filter: brightness(1.08); }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--txt); }
+  .btn.small { width: auto; padding: 8px 14px; font-size: 13px; margin: 0; }
+  .btn.danger { background: var(--danger); }
+  .hint { color: var(--muted); font-size: 12px; margin-top: 14px; }
+  .err { color: var(--explicit); font-size: 13px; min-height: 18px; margin-top: 10px; }
+
+  /* ---------- App shell ---------- */
+  #app { display: none; }
+  header.topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 18px;
+    background: rgba(10,13,28,.9); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 800; font-size: 18px; white-space: nowrap;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .search-wrap { flex: 1; display: flex; gap: 8px; }
+  #search { flex: 1; }
+  .topbar .btn.small { flex: 0 0 auto; }
+  select.sort { width: auto; padding: 10px 12px; }
+
+  .layout { display: grid; grid-template-columns: 240px 1fr; gap: 18px; padding: 18px; }
+  @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } aside { order: 2; } }
+
+  aside {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px; height: fit-content; position: sticky; top: 74px;
+    max-height: calc(100vh - 92px); overflow: auto;
+  }
+  aside h3 { margin: 4px 0 10px; font-size: 12px; letter-spacing: 1.5px;
+    text-transform: uppercase; color: var(--muted); }
+  .stat-row { display: flex; justify-content: space-between; font-size: 13px;
+    color: var(--muted); padding: 3px 0; }
+  .stat-row b { color: var(--txt); }
+  .taglist { list-style: none; margin: 0; padding: 0; }
+  .taglist li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 8px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  }
+  .taglist li:hover { background: var(--panel-2); }
+  .taglist .cnt { color: var(--muted); font-size: 12px; }
+  .taglist .tname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rating-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 7px; }
+
+  .active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+  }
+  .chip.neg { border-color: var(--explicit); color: var(--explicit); }
+  .chip .x { opacity: .7; }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+  .card {
+    position: relative; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; overflow: hidden; cursor: pointer; aspect-ratio: 1;
+    transition: transform .12s, border-color .12s;
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card .rate-band { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .card .tagcount {
+    position: absolute; bottom: 6px; right: 6px;
+    background: rgba(7,9,18,.82); color: var(--txt); font-size: 11px;
+    padding: 2px 6px; border-radius: 6px;
+  }
+  .empty {
+    text-align: center; color: var(--muted); padding: 70px 20px;
+    border: 1px dashed var(--line); border-radius: var(--radius);
+  }
+  .empty .big { font-size: 44px; margin-bottom: 8px; }
+
+  /* ---------- Modal ---------- */
+  .modal-back {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    background: rgba(4,6,14,.82); backdrop-filter: blur(4px);
+    align-items: flex-start; justify-content: center; overflow: auto; padding: 24px;
+  }
+  .modal {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    width: min(1000px, 96vw); margin: auto; overflow: hidden;
+  }
+  .modal-head { display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .modal-head h2 { margin: 0; font-size: 16px; }
+  .modal-body { padding: 18px; }
+  .post-view { display: grid; grid-template-columns: 1fr 300px; gap: 18px; }
+  @media (max-width: 720px){ .post-view { grid-template-columns: 1fr; } }
+  .post-img-wrap {
+    background: var(--bg-2); border-radius: 10px; display: flex; align-items: center;
+    justify-content: center; overflow: hidden; min-height: 260px; position: relative;
+  }
+  .post-img-wrap img { max-width: 100%; max-height: 70vh; object-fit: contain; }
+  .meta-block h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--muted); }
+  .meta-block { margin-bottom: 16px; }
+  .tag-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag-pill { background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+  .tag-pill:hover { border-color: var(--accent); }
+  .meta-line { font-size: 13px; color: var(--muted); margin: 4px 0; }
+  .meta-line b { color: var(--txt); font-weight: 600; }
+  .rate-select { display: flex; gap: 8px; margin-top: 4px; }
+  .rate-select label { flex: 1; text-align: center; padding: 6px; border-radius: 8px;
+    border: 1px solid var(--line); font-size: 12px; cursor: pointer; }
+  .rate-select input { display: none; }
+  .rate-select input:checked + span { font-weight: 700; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+
+  /* Drop / upload zone */
+  .dropzone {
+    border: 2px dashed var(--line); border-radius: 12px; padding: 30px;
+    text-align: center; color: var(--muted); transition: .15s; cursor: pointer;
+  }
+  .dropzone.drag { border-color: var(--accent); background: var(--panel-2); color: var(--txt); }
+  .thumb-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .thumb-strip .t { width: 70px; height: 70px; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--line); }
+  .thumb-strip img { width: 100%; height: 100%; object-fit: cover; }
+  label.lbl { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 6px;
+    letter-spacing: .5px; }
+
+  /* Screenshot deterrent overlays */
+  #blur-shield {
+    position: fixed; inset: 0; z-index: 200; display: none;
+    background: rgba(7,9,18,.98); backdrop-filter: blur(30px);
+    align-items: center; justify-content: center; text-align: center; padding: 30px;
+  }
+  #blur-shield .msg { max-width: 420px; }
+  #blur-shield .lockicon { font-size: 54px; margin-bottom: 14px; }
+  .watermark {
+    position: fixed; inset: 0; z-index: 15; pointer-events: none;
+    background-repeat: repeat; opacity: .05;
+    background-image: repeating-linear-gradient(
+      -30deg, transparent 0 120px, rgba(176,108,255,.4) 120px 122px);
+    display: none;
+  }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--panel-2); border: 1px solid var(--line); color: var(--txt);
+    padding: 12px 18px; border-radius: 10px; font-size: 13px; z-index: 300;
+    opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+  .toast.warn { border-color: var(--explicit); }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOCK SCREEN ===================== -->
+<div id="lock">
+  <div class="lock-card">
+    <div class="badge">🔒 Private Archive</div>
+    <div class="logo">Galactic War Sim 2</div>
+    <p id="lock-sub">Enter your access passcode to open the booru.</p>
+    <div class="field">
+      <input type="password" id="pass" placeholder="Passcode" autocomplete="off" />
+    </div>
+    <div class="err" id="lock-err"></div>
+    <button class="btn" id="unlock-btn">Enter</button>
+    <div class="hint" id="lock-hint"></div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app">
+  <div class="watermark" id="watermark"></div>
+  <header class="topbar">
+    <div class="brand">🌌 GWS&nbsp;2</div>
+    <div class="search-wrap">
+      <input type="text" id="search" placeholder="Search tags:  fleet -damaged rating:safe  (space separated, - excludes)" />
+      <button class="btn small" id="search-btn">Search</button>
+    </div>
+    <select class="sort" id="sort">
+      <option value="new">Newest</option>
+      <option value="old">Oldest</option>
+      <option value="tags">Most tags</option>
+    </select>
+    <button class="btn small" id="upload-open">＋ Upload</button>
+    <button class="btn small ghost" id="lock-btn">Lock</button>
+  </header>
+
+  <div class="layout">
+    <aside>
+      <h3>Archive</h3>
+      <div class="stat-row"><span>Posts</span><b id="stat-posts">0</b></div>
+      <div class="stat-row"><span>Unique tags</span><b id="stat-tags">0</b></div>
+      <div class="stat-row"><span>Showing</span><b id="stat-shown">0</b></div>
+      <h3 style="margin-top:18px;">Ratings</h3>
+      <ul class="taglist" id="rating-list"></ul>
+      <h3 style="margin-top:18px;">Tags</h3>
+      <ul class="taglist" id="tag-list"></ul>
+    </aside>
+
+    <main>
+      <div class="active-filters" id="active-filters"></div>
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty" style="display:none;">
+        <div class="big">🛰️</div>
+        <div id="empty-msg">No posts yet. Click <b>＋ Upload</b> to add images to the archive.</div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===================== UPLOAD MODAL ===================== -->
+<div class="modal-back" id="upload-modal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-head">
+      <h2>Upload posts</h2>
+      <button class="btn small ghost" data-close>✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="dropzone" id="dropzone">
+        <div style="font-size:34px;">🖼️</div>
+        <div><b>Drop images here</b> or click to browse</div>
+        <div style="font-size:12px;margin-top:6px;">Images only — videos are blocked on this archive.</div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none;" />
+      <div class="thumb-strip" id="pending-thumbs"></div>
+
+      <label class="lbl">Tags (space separated)</label>
+      <input type="text" id="up-tags" placeholder="dreadnought orion_belt space_battle" />
+      <label class="lbl">Rating</label>
+      <div class="rate-select" id="up-rating">
+        <label><input type="radio" name="uprate" value="safe" checked><span>🟢 Safe</span></label>
+        <label><input type="radio" name="uprate" value="questionable"><span>🟡 Questionable</span></label>
+        <label><input type="radio" name="uprate" value="explicit"><span>🔴 Explicit</span></label>
+      </div>
+      <label class="lbl">Source (optional)</label>
+      <input type="text" id="up-source" placeholder="https:// or notes" />
+      <div class="modal-actions">
+        <button class="btn" id="up-save">Add to archive</button>
+        <button class="btn ghost small" data-close style="width:auto;">Cancel</button>
+      </div>
+      <div class="err" id="up-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== POST DETAIL MODAL ===================== -->
+<div class="modal-back" id="post-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="pm-title">Post</h2>
+      <button class="btn small ghost" data-close>✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="post-view">
+        <div class="post-img-wrap"><img id="pm-img" alt="post" /></div>
+        <div>
+          <div class="meta-block">
+            <h4>Rating</h4>
+            <div class="rate-select" id="pm-rating">
+              <label><input type="radio" name="pmrate" value="safe"><span>🟢 Safe</span></label>
+              <label><input type="radio" name="pmrate" value="questionable"><span>🟡 Quest.</span></label>
+              <label><input type="radio" name="pmrate" value="explicit"><span>🔴 Explicit</span></label>
+            </div>
+          </div>
+          <div class="meta-block">
+            <h4>Tags</h4>
+            <div class="tag-pills" id="pm-tags"></div>
+            <label class="lbl">Edit tags</label>
+            <input type="text" id="pm-tag-edit" placeholder="space separated tags" />
+            <button class="btn small" id="pm-save-tags" style="margin-top:8px;">Save tags</button>
+          </div>
+          <div class="meta-block">
+            <h4>Info</h4>
+            <div class="meta-line">Posted: <b id="pm-date"></b></div>
+            <div class="meta-line">Size: <b id="pm-size"></b></div>
+            <div class="meta-line">Source: <b id="pm-source">—</b></div>
+          </div>
+          <div class="modal-actions">
+            <button class="btn danger small" id="pm-delete" style="width:auto;">🗑 Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Screenshot deterrent shield -->
+<div id="blur-shield">
+  <div class="msg">
+    <div class="lockicon">🛡️</div>
+    <h2>Content hidden</h2>
+    <p style="color:var(--muted)">This private archive hides its content when the window loses focus, to discourage screenshots and screen capture. Return to this tab to continue.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ------------------------------------------------------------------ *
+   *  Config
+   * ------------------------------------------------------------------ */
+  var PASS_KEY = "gws2_pass_hash";
+  var DEFAULT_PASS = "galaxy"; // used only until user sets their own
+  var DB_NAME = "gws2_booru";
+  var STORE = "posts";
+  var THUMB_MAX = 320;
+
+  /* ------------------------------------------------------------------ *
+   *  Tiny helpers
+   * ------------------------------------------------------------------ */
+  function $(id){ return document.getElementById(id); }
+  function el(tag, cls){ var e = document.createElement(tag); if(cls) e.className = cls; return e; }
+  function fmtBytes(b){
+    if(!b && b!==0) return "—";
+    var u=["B","KB","MB","GB"], i=0;
+    while(b>=1024 && i<u.length-1){ b/=1024; i++; }
+    return b.toFixed(i?1:0)+" "+u[i];
+  }
+  function fmtDate(ts){ return new Date(ts).toLocaleString(); }
+  function toast(msg, warn){
+    var t=$("toast"); t.textContent=msg;
+    t.className="toast show"+(warn?" warn":"");
+    clearTimeout(t._t); t._t=setTimeout(function(){ t.className="toast"; }, 2600);
+  }
+  // simple, non-cryptographic hash — this is a private local gate, not real security
+  function hash(s){
+    var h=5381; for(var i=0;i<s.length;i++){ h=((h<<5)+h)+s.charCodeAt(i); h|=0; }
+    return String(h>>>0);
+  }
+  var RATE_COLOR = { safe:"var(--safe)", questionable:"var(--quest)", explicit:"var(--explicit)" };
+  var RATE_ICON  = { safe:"🟢", questionable:"🟡", explicit:"🔴" };
+
+  /* ------------------------------------------------------------------ *
+   *  IndexedDB layer
+   * ------------------------------------------------------------------ */
+  var dbp = new Promise(function(resolve, reject){
+    var req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = function(e){
+      var db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        db.createObjectStore(STORE, { keyPath: "id" });
+      }
+    };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+  function tx(mode){ return dbp.then(function(db){ return db.transaction(STORE, mode).objectStore(STORE); }); }
+  function idbAll(){
+    return tx("readonly").then(function(store){
+      return new Promise(function(res, rej){
+        var out=[]; var c=store.openCursor();
+        c.onsuccess=function(e){ var cur=e.target.result;
+          if(cur){ out.push(cur.value); cur.continue(); } else res(out); };
+        c.onerror=function(){ rej(c.error); };
+      });
+    });
+  }
+  function idbPut(v){ return tx("readwrite").then(function(s){ return new Promise(function(res,rej){
+    var r=s.put(v); r.onsuccess=function(){res();}; r.onerror=function(){rej(r.error);}; }); }); }
+  function idbDel(id){ return tx("readwrite").then(function(s){ return new Promise(function(res,rej){
+    var r=s.delete(id); r.onsuccess=function(){res();}; r.onerror=function(){rej(r.error);}; }); }); }
+
+  /* ------------------------------------------------------------------ *
+   *  State
+   * ------------------------------------------------------------------ */
+  var POSTS = [];          // in-memory copy of all posts
+  var includeTags = [];    // active positive tag filters
+  var excludeTags = [];    // active negative tag filters
+  var ratingFilter = null; // "safe" | "questionable" | "explicit" | null
+  var urlCache = {};       // id -> object URL for full blob
+  var pendingFiles = [];   // files staged in the upload modal
+  var currentPost = null;  // post open in detail modal
+
+  /* ------------------------------------------------------------------ *
+   *  Image processing (thumbnail generation, video rejection)
+   * ------------------------------------------------------------------ */
+  function makeThumb(file){
+    return new Promise(function(resolve, reject){
+      if(!/^image\//.test(file.type)){ reject(new Error("not-image")); return; }
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){
+        var scale = Math.min(1, THUMB_MAX / Math.max(img.width, img.height));
+        var w = Math.round(img.width*scale), h = Math.round(img.height*scale);
+        var cv = document.createElement("canvas"); cv.width=w; cv.height=h;
+        cv.getContext("2d").drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve({ thumb: cv.toDataURL("image/jpeg", 0.8), w: img.width, h: img.height });
+      };
+      img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("decode")); };
+      img.src = url;
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Rendering
+   * ------------------------------------------------------------------ */
+  function normalizeTags(str){
+    return (str||"").toLowerCase().split(/[\s,]+/)
+      .map(function(t){ return t.replace(/[^a-z0-9_\-]/g,""); })
+      .filter(Boolean);
+  }
+  function uniq(a){ return a.filter(function(v,i){ return a.indexOf(v)===i; }); }
+
+  function matchesFilter(p){
+    if(ratingFilter && p.rating !== ratingFilter) return false;
+    for(var i=0;i<includeTags.length;i++){ if(p.tags.indexOf(includeTags[i])<0) return false; }
+    for(var j=0;j<excludeTags.length;j++){ if(p.tags.indexOf(excludeTags[j])>=0) return false; }
+    return true;
+  }
+
+  function currentView(){
+    var list = POSTS.filter(matchesFilter);
+    var sort = $("sort").value;
+    list.sort(function(a,b){
+      if(sort==="new") return b.createdAt - a.createdAt;
+      if(sort==="old") return a.createdAt - b.createdAt;
+      if(sort==="tags") return b.tags.length - a.tags.length;
+      return 0;
+    });
+    return list;
+  }
+
+  function objUrl(p){
+    if(!urlCache[p.id]) urlCache[p.id] = URL.createObjectURL(p.blob);
+    return urlCache[p.id];
+  }
+
+  function renderGrid(){
+    var grid = $("grid"); grid.innerHTML="";
+    var list = currentView();
+    $("stat-shown").textContent = list.length;
+    $("empty").style.display = list.length ? "none" : "block";
+    $("empty-msg").innerHTML = POSTS.length
+      ? "No posts match your filters."
+      : "No posts yet. Click <b>＋ Upload</b> to add images to the archive.";
+
+    list.forEach(function(p){
+      var card = el("div","card");
+      var band = el("div","rate-band"); band.style.background = RATE_COLOR[p.rating]||"var(--muted)";
+      var img = el("img"); img.src = p.thumb; img.alt = p.tags.join(" ");
+      var tc = el("div","tagcount"); tc.textContent = p.tags.length + "🏷";
+      card.appendChild(img); card.appendChild(band); card.appendChild(tc);
+      card.addEventListener("click", function(){ openPost(p); });
+      grid.appendChild(card);
+    });
+  }
+
+  function renderSidebar(){
+    $("stat-posts").textContent = POSTS.length;
+    // tag counts
+    var counts = {};
+    POSTS.forEach(function(p){ p.tags.forEach(function(t){ counts[t]=(counts[t]||0)+1; }); });
+    var tags = Object.keys(counts).sort(function(a,b){ return counts[b]-counts[a] || a.localeCompare(b); });
+    $("stat-tags").textContent = tags.length;
+
+    var tl = $("tag-list"); tl.innerHTML="";
+    if(!tags.length){ var li=el("li"); li.style.color="var(--muted)"; li.textContent="No tags yet"; tl.appendChild(li); }
+    tags.forEach(function(t){
+      var li=el("li");
+      var name=el("span","tname"); name.textContent="#"+t;
+      var cnt=el("span","cnt"); cnt.textContent=counts[t];
+      li.appendChild(name); li.appendChild(cnt);
+      li.title="Click to filter, Shift+Click to exclude";
+      li.addEventListener("click", function(e){
+        if(e.shiftKey){ addExclude(t); } else { addInclude(t); }
+      });
+      tl.appendChild(li);
+    });
+
+    // ratings
+    var rcount = { safe:0, questionable:0, explicit:0 };
+    POSTS.forEach(function(p){ if(rcount[p.rating]!=null) rcount[p.rating]++; });
+    var rl=$("rating-list"); rl.innerHTML="";
+    ["safe","questionable","explicit"].forEach(function(r){
+      var li=el("li");
+      var name=el("span","tname");
+      var dot=el("span","rating-dot"); dot.style.background=RATE_COLOR[r];
+      name.appendChild(dot); name.appendChild(document.createTextNode(r));
+      var cnt=el("span","cnt"); cnt.textContent=rcount[r];
+      li.appendChild(name); li.appendChild(cnt);
+      if(ratingFilter===r) li.style.background="var(--panel-2)";
+      li.addEventListener("click", function(){
+        ratingFilter = (ratingFilter===r)? null : r; renderAll();
+      });
+      rl.appendChild(li);
+    });
+  }
+
+  function renderChips(){
+    var box=$("active-filters"); box.innerHTML="";
+    function chip(label, cls, onRemove){
+      var c=el("span","chip"+(cls?(" "+cls):""));
+      c.appendChild(document.createTextNode(label));
+      var x=el("span","x"); x.textContent="✕"; c.appendChild(x);
+      c.addEventListener("click", onRemove); box.appendChild(c);
+    }
+    if(ratingFilter) chip("rating:"+ratingFilter, "", function(){ ratingFilter=null; renderAll(); });
+    includeTags.forEach(function(t){ chip("#"+t,"",function(){ includeTags=includeTags.filter(function(x){return x!==t;}); syncSearch(); renderAll(); }); });
+    excludeTags.forEach(function(t){ chip("-"+t,"neg",function(){ excludeTags=excludeTags.filter(function(x){return x!==t;}); syncSearch(); renderAll(); }); });
+    if(includeTags.length||excludeTags.length||ratingFilter){
+      var clr=el("span","chip"); clr.style.borderColor="var(--accent)"; clr.textContent="clear all";
+      clr.addEventListener("click", function(){ includeTags=[];excludeTags=[];ratingFilter=null; $("search").value=""; renderAll(); });
+      box.appendChild(clr);
+    }
+  }
+
+  function renderAll(){ renderGrid(); renderSidebar(); renderChips(); }
+
+  function addInclude(t){ if(includeTags.indexOf(t)<0){ includeTags.push(t); syncSearch(); renderAll(); } }
+  function addExclude(t){ if(excludeTags.indexOf(t)<0){ excludeTags.push(t); syncSearch(); renderAll(); } }
+  function syncSearch(){
+    var parts = includeTags.slice();
+    excludeTags.forEach(function(t){ parts.push("-"+t); });
+    if(ratingFilter) parts.push("rating:"+ratingFilter);
+    $("search").value = parts.join(" ");
+  }
+
+  function applySearch(){
+    var raw = $("search").value.toLowerCase().split(/[\s,]+/).filter(Boolean);
+    includeTags=[]; excludeTags=[]; ratingFilter=null;
+    raw.forEach(function(tok){
+      if(tok.indexOf("rating:")===0){
+        var r=tok.slice(7);
+        if(RATE_COLOR[r]) ratingFilter=r;
+        else if(r==="s") ratingFilter="safe";
+        else if(r==="q") ratingFilter="questionable";
+        else if(r==="e") ratingFilter="explicit";
+        return;
+      }
+      if(tok[0]==="-"){ var neg=tok.slice(1).replace(/[^a-z0-9_\-]/g,""); if(neg) excludeTags.push(neg); }
+      else { var pos=tok.replace(/[^a-z0-9_\-]/g,""); if(pos) includeTags.push(pos); }
+    });
+    includeTags=uniq(includeTags); excludeTags=uniq(excludeTags);
+    renderAll();
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Upload flow
+   * ------------------------------------------------------------------ */
+  function openUpload(){ pendingFiles=[]; $("pending-thumbs").innerHTML=""; $("up-tags").value="";
+    $("up-source").value=""; $("up-err").textContent=""; $("upload-modal").style.display="flex"; }
+
+  function stageFiles(fileList){
+    var arr = Array.prototype.slice.call(fileList);
+    var rejected = 0;
+    arr.forEach(function(f){
+      if(/^video\//.test(f.type) || /\.(mp4|mov|webm|avi|mkv|m4v|gif)$/i.test(f.name) && f.type===""){
+        rejected++; return;
+      }
+      if(!/^image\//.test(f.type)){ rejected++; return; }
+      pendingFiles.push(f);
+      var t=el("div","t"); var im=el("img"); im.src=URL.createObjectURL(f); t.appendChild(im);
+      $("pending-thumbs").appendChild(t);
+    });
+    if(rejected){ toast(rejected+" file(s) rejected — videos & non-images are blocked.", true); }
+  }
+
+  function saveUpload(){
+    if(!pendingFiles.length){ $("up-err").textContent="Add at least one image first."; return; }
+    var tags = normalizeTags($("up-tags").value);
+    var rating = document.querySelector('input[name="uprate"]:checked').value;
+    var source = $("up-source").value.trim();
+    $("up-err").textContent="Processing…";
+    var jobs = pendingFiles.map(function(f){
+      return makeThumb(f).then(function(meta){
+        return {
+          id: "p_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),
+          blob: f, thumb: meta.thumb, w: meta.w, h: meta.h,
+          tags: tags.slice(), rating: rating, source: source,
+          bytes: f.size, createdAt: Date.now()
+        };
+      });
+    });
+    Promise.all(jobs).then(function(newPosts){
+      return Promise.all(newPosts.map(idbPut)).then(function(){
+        POSTS = POSTS.concat(newPosts);
+        $("upload-modal").style.display="none";
+        renderAll();
+        toast(newPosts.length+" post(s) added.");
+      });
+    }).catch(function(err){
+      $("up-err").textContent="Error: "+err.message;
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Post detail
+   * ------------------------------------------------------------------ */
+  function openPost(p){
+    currentPost = p;
+    $("pm-title").textContent = "Post — "+fmtDate(p.createdAt);
+    $("pm-img").src = objUrl(p);
+    $("pm-date").textContent = fmtDate(p.createdAt);
+    $("pm-size").textContent = (p.w&&p.h? p.w+"×"+p.h+"  ·  ":"") + fmtBytes(p.bytes);
+    $("pm-source").textContent = p.source || "—";
+    $("pm-tag-edit").value = p.tags.join(" ");
+    var r = document.querySelector('#pm-rating input[value="'+p.rating+'"]'); if(r) r.checked=true;
+    renderPostTags(p);
+    $("post-modal").style.display="flex";
+  }
+  function renderPostTags(p){
+    var box=$("pm-tags"); box.innerHTML="";
+    if(!p.tags.length){ var s=el("span"); s.style.color="var(--muted)"; s.style.fontSize="13px"; s.textContent="untagged"; box.appendChild(s); }
+    p.tags.forEach(function(t){
+      var pill=el("span","tag-pill"); pill.textContent="#"+t;
+      pill.title="Filter by this tag";
+      pill.addEventListener("click", function(){ $("post-modal").style.display="none"; includeTags=[t]; excludeTags=[]; ratingFilter=null; syncSearch(); renderAll(); });
+      box.appendChild(pill);
+    });
+  }
+  function savePostTags(){
+    if(!currentPost) return;
+    currentPost.tags = uniq(normalizeTags($("pm-tag-edit").value));
+    currentPost.rating = document.querySelector('input[name="pmrate"]:checked').value;
+    idbPut(currentPost).then(function(){ renderPostTags(currentPost); renderAll(); toast("Post updated."); });
+  }
+  function deletePost(){
+    if(!currentPost) return;
+    if(!confirm("Delete this post permanently?")) return;
+    var id=currentPost.id;
+    idbDel(id).then(function(){
+      if(urlCache[id]){ URL.revokeObjectURL(urlCache[id]); delete urlCache[id]; }
+      POSTS = POSTS.filter(function(p){ return p.id!==id; });
+      $("post-modal").style.display="none";
+      renderAll(); toast("Post deleted.");
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Screenshot / capture deterrents
+   *  NOTE: browsers cannot truly block screenshots or screen recording.
+   *  These are best-effort deterrents only.
+   * ------------------------------------------------------------------ */
+  function hideContent(on){
+    $("blur-shield").style.display = on ? "flex" : "none";
+  }
+  document.addEventListener("visibilitychange", function(){
+    hideContent(document.hidden);
+  });
+  window.addEventListener("blur", function(){ hideContent(true); });
+  window.addEventListener("focus", function(){ hideContent(false); });
+
+  // PrintScreen / capture key deterrents
+  document.addEventListener("keyup", function(e){
+    if(e.key === "PrintScreen"){
+      try { navigator.clipboard && navigator.clipboard.writeText(""); } catch(_){}
+      hideContent(true);
+      toast("Screenshots are discouraged on this private archive.", true);
+      setTimeout(function(){ hideContent(false); }, 1200);
+    }
+  });
+  document.addEventListener("keydown", function(e){
+    // deter capture / devtools shortcuts (cannot be fully blocked)
+    var k = e.key ? e.key.toLowerCase() : "";
+    if((e.ctrlKey||e.metaKey) && e.shiftKey && (k==="s"||k==="3"||k==="4"||k==="5")){
+      e.preventDefault(); toast("Screen capture shortcuts are discouraged here.", true);
+    }
+  });
+  // block context menu & drag (image saving deterrent)
+  document.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+  document.addEventListener("dragstart", function(e){ e.preventDefault(); });
+
+  /* ------------------------------------------------------------------ *
+   *  Lock / unlock
+   * ------------------------------------------------------------------ */
+  function isFirstRun(){ return !localStorage.getItem(PASS_KEY); }
+  function refreshLockCopy(){
+    if(isFirstRun()){
+      $("lock-sub").textContent = "First run: create a passcode for this private archive.";
+      $("pass").placeholder = "Create a passcode";
+      $("unlock-btn").textContent = "Create & enter";
+      $("lock-hint").innerHTML = "This passcode is stored only in this browser. There is no recovery.";
+    } else {
+      $("lock-sub").textContent = "Enter your access passcode to open the booru.";
+      $("pass").placeholder = "Passcode";
+      $("unlock-btn").textContent = "Enter";
+      $("lock-hint").textContent = "";
+    }
+  }
+  function unlock(){
+    var v = $("pass").value;
+    if(!v){ $("lock-err").textContent="Enter a passcode."; return; }
+    if(isFirstRun()){
+      localStorage.setItem(PASS_KEY, hash(v));
+      enterApp();
+    } else if(hash(v) === localStorage.getItem(PASS_KEY)){
+      enterApp();
+    } else {
+      $("lock-err").textContent="Incorrect passcode.";
+      $("pass").value="";
+    }
+  }
+  function enterApp(){
+    $("lock").style.display="none";
+    $("app").style.display="block";
+    $("watermark").style.display="block";
+    load();
+  }
+  function lock(){
+    $("app").style.display="none";
+    $("watermark").style.display="none";
+    $("pass").value=""; $("lock-err").textContent="";
+    $("lock").style.display="flex";
+    refreshLockCopy();
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Load data
+   * ------------------------------------------------------------------ */
+  function load(){
+    idbAll().then(function(rows){
+      POSTS = rows;
+      renderAll();
+    }).catch(function(err){
+      toast("Storage error: "+err.message, true);
+    });
+  }
+
+  /* ------------------------------------------------------------------ *
+   *  Wire up events
+   * ------------------------------------------------------------------ */
+  function closeModals(){
+    $("upload-modal").style.display="none";
+    $("post-modal").style.display="none";
+  }
+  document.querySelectorAll("[data-close]").forEach(function(b){ b.addEventListener("click", closeModals); });
+  document.querySelectorAll(".modal-back").forEach(function(m){
+    m.addEventListener("click", function(e){ if(e.target===m) closeModals(); });
+  });
+
+  $("unlock-btn").addEventListener("click", unlock);
+  $("pass").addEventListener("keydown", function(e){ if(e.key==="Enter") unlock(); });
+  $("lock-btn").addEventListener("click", lock);
+
+  $("upload-open").addEventListener("click", openUpload);
+  $("up-save").addEventListener("click", saveUpload);
+
+  $("search-btn").addEventListener("click", applySearch);
+  $("search").addEventListener("keydown", function(e){ if(e.key==="Enter") applySearch(); });
+  $("sort").addEventListener("change", renderGrid);
+
+  $("pm-save-tags").addEventListener("click", savePostTags);
+  $("pm-delete").addEventListener("click", deletePost);
+
+  // dropzone
+  var dz=$("dropzone"), fi=$("file-input");
+  dz.addEventListener("click", function(){ fi.click(); });
+  fi.addEventListener("change", function(){ stageFiles(fi.files); fi.value=""; });
+  ["dragenter","dragover"].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.add("drag"); }); });
+  ["dragleave","drop"].forEach(function(ev){ dz.addEventListener(ev, function(e){ e.preventDefault(); dz.classList.remove("drag"); }); });
+  dz.addEventListener("drop", function(e){ if(e.dataTransfer && e.dataTransfer.files) stageFiles(e.dataTransfer.files); });
+
+  document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeModals(); });
+
+  /* ------------------------------------------------------------------ *
+   *  Boot
+   * ------------------------------------------------------------------ */
+  refreshLockCopy();
+  $("pass").focus();
+})();
+</script>
+</body>
+</html>
