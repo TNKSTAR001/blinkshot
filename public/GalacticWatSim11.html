@@ -140,6 +140,12 @@
   .speedCtl.open #speedMenu { display: grid; }
   .speedChoice { padding: 8px 0; text-align: center; font-size: 11px; border: 1px solid #1b2949; border-radius: 5px; color: #9db4dd; background: var(--card); cursor: pointer; }
   .speedChoice:hover, .speedChoice.on { background: var(--accBg); border-color: var(--acc); color: #fff; }
+  .powerCtl { position: relative; }
+  #btnPower.on { background: #2a1440; border-color: #c79bff; color: #fff; box-shadow: 0 0 14px #c79bff55; }
+  #powerMenu { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 18; width: 176px; grid-template-columns: 1fr; gap: 5px; padding: 7px; background: #071022f5; border: 1px solid var(--bord2); border-radius: 6px; box-shadow: 0 10px 28px #000c; }
+  .powerCtl.open #powerMenu { display: grid; }
+  .powerChoice { padding: 8px 9px; text-align: left; font-size: 11px; border: 1px solid #1b2949; border-radius: 5px; color: #cdd9f0; background: var(--card); cursor: pointer; white-space: nowrap; }
+  .powerChoice:hover, .powerChoice.on { background: #2a1440; border-color: #c79bff; color: #fff; }
   #btnOverlayToggle { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); z-index: 30; width: 38px; height: 32px; display: grid; place-items: center; border: 1px solid var(--bord2); border-radius: 6px; background: #0d1428dd; cursor: pointer; user-select: none; }
   #btnOverlayToggle .eyeShape { position: relative; width: 22px; height: 13px; border: 2px solid var(--txt); border-radius: 50% / 58%; opacity: .9; }
   #btnOverlayToggle .eyeShape::after { content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; transform: translate(-50%,-50%); border-radius: 50%; background: var(--cyan); box-shadow: 0 0 8px #7fd4ff88; }
@@ -252,7 +258,7 @@
     <div id="hints">
       <b>LMB</b> deploy / pilot fire · <b>RMB</b> delete · <b>Wheel</b> zoom · <b>MMB / Shift+drag</b> pan · <b>Space</b> pause · <b>F</b> fullscreen<br>
       <b>Touch:</b> choose Deploy / Move / Follow / Pilot / Erase / Nova · Pilot adds twin sticks — Move (left) + Aim (right, auto-fires on target) · two fingers to pan &amp; pinch-zoom<br>
-      <b>Diplomacy:</b> toggle any faction pair between War &amp; Peace · <b>☢ Nova Bomb</b> tool: click to vaporise every ship in a huge blast · <b>🕳 Singularity</b> tool: click to collapse a gravity well that drags ships inward and crushes its core
+      <b>Diplomacy:</b> toggle any faction pair between War &amp; Peace · <b>◈ Powers</b> menu (extends like Time): ☢ Nova Bomb (vaporise), 🕳 Singularity (gravity well), ⚡ EMP Pulse (disable), ✚ Repair Nanites (heal), 🌩 Ion Storm (slow + shield drain) — pick one, then click the map
     </div>
   </div>
   <div id="cvWrap">
@@ -328,8 +334,16 @@
           <div class="tBtn toolBtn" data-tool="follow">Follow</div>
           <div class="tBtn toolBtn" data-tool="pilot">Pilot</div>
           <div class="tBtn toolBtn" data-tool="erase">Erase</div>
-          <div class="tBtn toolBtn" data-tool="nova" id="btnNovaTool" title="Nova Shock Bomb — click the map to vaporise every ship in a huge blast">☢ Nova Bomb</div>
-          <div class="tBtn toolBtn" data-tool="singularity" id="btnSingularityTool" title="Singularity — collapse a gravity well that drags ships inward and crushes anything caught in its core">🕳 Singularity</div>
+          <div class="powerCtl" id="powerCtl">
+            <div class="tBtn" id="btnPower" title="Player powers — pick a battlefield ability, then click the map to unleash it">◈ Powers</div>
+            <div id="powerMenu">
+              <div class="powerChoice" data-power="nova" title="Vaporise every ship in a huge blast">☢ Nova Bomb</div>
+              <div class="powerChoice" data-power="singularity" title="Collapse a gravity well that drags ships in and crushes its core">🕳 Singularity</div>
+              <div class="powerChoice" data-power="emp" title="Disable every ship in the blast for a few seconds">⚡ EMP Pulse</div>
+              <div class="powerChoice" data-power="repair" title="Patch hull and recharge shields for ships in the cloud">✚ Repair Nanites</div>
+              <div class="powerChoice" data-power="storm" title="Drop a lingering cloud that slows ships and drains shields">🌩 Ion Storm</div>
+            </div>
+          </div>
         </div>
         <div class="tBtn" id="btnPause">⏸ Pause</div>
         <div class="speedCtl" id="speedCtl">
@@ -526,6 +540,10 @@ const SHIPS = {
     m:{sh:1.3}, weapons:[{k:'bolt',d:8,rof:1,rng:220,ps:350}], heal:{r:170, rate:20, max:3} },
   leech:     { name:'Leech Siphon Cruiser', hull:'cruiser', role:'Shield-drain attrition ship', desc:'A parasitic raider whose harmonic drain beam bleeds an enemy\'s shields and pours that stolen energy straight into its own barriers — the longer the fight, the harder it is to kill.',
     m:{hp:1, sh:1.15}, weapons:[{k:'beam',d:26,rof:2,rng:300,w:2.4,siphonBeam:true},{k:'bolt',d:9,rof:2.2,rng:250,ps:360,burst:2,spread:.07}], siphon:.5 },
+  corroder:  { name:'Corrosion Cruiser', hull:'cruiser', role:'Anti-armor / hull melter', desc:'Fires caustic rounds that splash acid over a target\'s plating; the corrosion keeps eating raw hull long after the shot lands, ignoring shields entirely. Devastating against heavily-armored capitals, unremarkable against bare shields.',
+    m:{hp:.95, sh:.9}, weapons:[{k:'plasma',d:20,rof:1.6,rng:280,ps:255,burst:2,spread:.08}], corrode:6 },
+  conduit:   { name:'Conduit Support Cruiser', hull:'cruiser', role:'Shield-recharge support', desc:'Broadcasts a resonance field that pours energy back into up to four nearby allied shields, keeping a shield-heavy line topped off under sustained fire. Lightly armed itself.',
+    m:{hp:1, sh:1.25}, weapons:[{k:'bolt',d:10,rof:1.5,rng:230,ps:350}], shieldAura:{r:185, rate:34, max:4} },
   /* ------- 5 BATTLESHIPS ------- */
   sovereign: { name:'Sovereign Line Battleship', hull:'battleship', role:'Ship of the line', desc:'Triple heavy plasma broadsides backed by a chain laser that leaps through nearby ships.',
     m:{}, weapons:[{k:'plasma',d:90,rof:.8,rng:360,ps:260,burst:3,spread:.1},{k:'beam',d:92,rof:.42,rng:420,w:3.1,chainLaser:true,chainJumps:2,chainRange:145,chainFalloff:.72}] },
@@ -539,6 +557,10 @@ const SHIPS = {
     m:{hp:1.1, sh:.8, sp:1.35}, weapons:[{k:'flak',d:25,rof:4,rng:210,ps:380,spread:.18}] },
   berserker: { name:'Berserker Assault Battleship', hull:'battleship', role:'Wounded-rage brawler', desc:'Sluggish and unremarkable at full strength — but as its hull is torn open the reactor floods the guns and thrusters. The closer to death it gets, the faster and deadlier it fights.',
     m:{hp:1.2, sh:.75, sp:1.15}, weapons:[{k:'bolt',d:20,rof:2.6,rng:235,ps:410,burst:2,spread:.1},{k:'plasma',d:52,rof:.7,rng:275,ps:270,burst:2,spread:.12}], rage:{hp:.55, sp:1.4, rof:1.7} },
+  splitter:  { name:'Splitter Brood Battleship', hull:'battleship', role:'Death-brood carrier', desc:'A living hive-hull that, when finally destroyed, ruptures into a wing of four fresh strike fighters — so cracking it open is only half the battle. Modest guns of its own.',
+    m:{hp:1.05, sh:.85}, weapons:[{k:'bolt',d:28,rof:2.2,rng:250,ps:400,burst:2,spread:.1},{k:'flak',d:14,rof:3,rng:200,ps:380,spread:.16}], split:{def:'saber', count:4} },
+  halo:      { name:'Halo Bulwark Battleship', hull:'battleship', role:'Regenerating deflector anchor', desc:'Projects a self-mending deflector bubble that soaks a huge amount of punishment on top of its shields and hull, healing back between salvos. A stubborn front-line anchor that is exhausting to bring down.',
+    m:{hp:1.1, sh:1, sp:.9}, weapons:[{k:'plasma',d:60,rof:.9,rng:320,ps:270,burst:2,spread:.1},{k:'bolt',d:20,rof:2,rng:280,ps:400,burst:2,spread:.08}], projector:{hp:900, regen:60} },
   sentinel:  { name:'Sentinel Chain-Laser Turret', hull:'turret', role:'Mine-deployed weapons platform', desc:'Grows from a deployed builder mine: moderate shields wrapped around a chain laser cannon.',
     m:{}, weapons:[{k:'beam',d:6,rof:200/60,rng:330,w:1.35,burst:1,turret:true,chainCannon:true,chainT:0,chainCd:2}] },
   /* ------- 3 DREADNOUGHTS ------- */
@@ -548,6 +570,8 @@ const SHIPS = {
     m:{}, weapons:[{k:'beam',d:320,rof:.35,rng:560,w:3.5}], afterburner:{boost:1.7, dur:1.5, cd:5.5} },
   bastion:   { name:'Bastion Fortress Dreadnought', hull:'dread', role:'Mobile fortress', desc:'Nearly unkillable. Shell batteries plus a dense anti-torpedo laser grid, and a regenerating overshield that recharges even under fire.',
     m:{hp:1.35, sh:1.3, sp:.75}, weapons:[{k:'shell',d:140,rof:.8,rng:420,ps:300,splash:25}], pd:{r:230, cd:.25}, overshield:{rate:.05} },
+  reflector: { name:'Reflector Aegis Dreadnought', hull:'dread', role:'Damage-reflecting bulwark', desc:'Its faceted deflector lattice hurls a fifth of every incoming hit straight back at the attacker. The harder an enemy pours on the damage, the more it bleeds itself — a walking punishment for focus fire.',
+    m:{hp:1.1, sh:1.15}, weapons:[{k:'plasma',d:150,rof:.8,rng:430,ps:270,burst:3,spread:.12},{k:'beam',d:110,rof:.5,rng:450,w:3.2}], reflect:.2 },
   /* ------- 1 TITAN ------- */
   leviathan: { name:'Leviathan-class Titan', hull:'titan', role:'Super-capital command ship', desc:'A city at war: multi-target plasma batteries, missile silos, and a spinal doom beam. Bring a fleet or don\'t bother.',
     m:{}, weapons:[
@@ -572,6 +596,7 @@ const FACTION_SHIP_NAMES = {
     titanhawk:'Atlas Heavy Fighter', ghost:'Wraith Stealth Fighter',
     vanguard:'Picket Light Cruiser', warden:'Guardian Heavy Cruiser', tempest:'Tempest Bombardment Cruiser',
     hivemother:'Foundry Carrier', mercy:'Caduceus Support Cruiser', leech:'Sapper Siphon Cruiser', berserker:'Fury Assault Battleship',
+    corroder:'Solvent Corrosion Cruiser', conduit:'Relay Conduit Cruiser', splitter:'Hydra Brood Battleship', halo:'Aegis Bulwark Battleship', reflector:'Mirrorshield Reflector Dreadnought',
     sovereign:'Sovereign Line Battleship', thunderer:'Longbow Artillery Battleship', breaker:'Breach Siege Battleship',
     aegis:'Aegis Bulwark Battleship', havoc:'Vindicator Assault Battleship', sentinel:'Sentinel Chain-Laser Turret',
     colossus:'Colossus War Dreadnought', seraph:'Seraph Lance Dreadnought', bastion:'Bastion Fortress Dreadnought',
@@ -583,6 +608,7 @@ const FACTION_SHIP_NAMES = {
     titanhawk:'Ironhide Heavy Fighter', ghost:'Mirage Stealth Fighter',
     vanguard:'Pathfinder Light Cruiser', warden:'Homestead Heavy Cruiser', tempest:'Avalanche Bombardment Cruiser',
     hivemother:'Launchyard Carrier', mercy:'Sawbone Support Cruiser', leech:'Bloodtick Siphon Cruiser', berserker:'Maverick Assault Battleship',
+    corroder:'Rusteater Corrosion Cruiser', conduit:'Relay Conduit Cruiser', splitter:'Chuckwagon Brood Battleship', halo:'Redoubt Bulwark Battleship', reflector:'Ricochet Reflector Dreadnought',
     sovereign:'Freehold Line Battleship', thunderer:'Quarry Artillery Battleship', breaker:'Bunkerbuster Siege Battleship',
     aegis:'Stockade Bulwark Battleship', havoc:'Stampede Assault Battleship', sentinel:'Claimpost Chain Turret',
     colossus:'Pioneer War Dreadnought', seraph:'Surveyor Lance Dreadnought', bastion:'Outpost Fortress Dreadnought',
@@ -594,6 +620,7 @@ const FACTION_SHIP_NAMES = {
     titanhawk:'Talonbeast Heavy Fighter', ghost:'Veilspawn Stealth Fighter',
     vanguard:'Guardclaw Light Cruiser', warden:'Shellback Heavy Cruiser', tempest:'Bileburst Bombardment Cruiser',
     hivemother:'Broodnest Carrier', mercy:'Mender Support Cruiser', leech:'Bloodfeeder Siphon Cruiser', berserker:'Frenzy Assault Battleship',
+    corroder:'Acidmaw Corrosion Cruiser', conduit:'Synapse Conduit Cruiser', splitter:'Broodsplit Battleship', halo:'Membrane Bulwark Battleship', reflector:'Chitinmirror Reflector Dreadnought',
     sovereign:'Overclaw Line Battleship', thunderer:'Thornrain Artillery Battleship', breaker:'Fangbreaker Siege Battleship',
     aegis:'Chitinwall Bulwark Battleship', havoc:'Bloodmaw Assault Battleship', sentinel:'Spinepod Chain Turret',
     colossus:'Eldermaw War Dreadnought', seraph:'Sunspine Lance Dreadnought', bastion:'Hardshell Fortress Dreadnought',
@@ -605,6 +632,7 @@ const FACTION_SHIP_NAMES = {
     titanhawk:'Monolith Heavy Fighter', ghost:'Phaseglass Stealth Fighter',
     vanguard:'Lattice Light Cruiser', warden:'Keystone Heavy Cruiser', tempest:'Resonance Bombardment Cruiser',
     hivemother:'Crystal Loom Carrier', mercy:'Harmonic Support Cruiser', leech:'Entropy Siphon Cruiser', berserker:'Cascade Assault Battleship',
+    corroder:'Decay Corrosion Cruiser', conduit:'Resonance Conduit Cruiser', splitter:'Fractal Brood Battleship', halo:'Barrier Bulwark Battleship', reflector:'Prism Reflector Dreadnought',
     sovereign:'Parallax Line Battleship', thunderer:'Meteor Artillery Battleship', breaker:'Fracture Siege Battleship',
     aegis:'Aperture Bulwark Battleship', havoc:'Shatter Assault Battleship', sentinel:'Glyph Chain Turret',
     colossus:'Pylon War Dreadnought', seraph:'Zenith Lance Dreadnought', bastion:'Citadel Fortress Dreadnought',
@@ -616,6 +644,7 @@ const FACTION_SHIP_NAMES = {
     titanhawk:'Blackflag Heavy Fighter', ghost:'Nightknife Stealth Fighter',
     vanguard:'Skirmisher Light Cruiser', warden:'Corsair Heavy Cruiser', tempest:'Broadside Bombardment Cruiser',
     hivemother:'Raidbay Carrier', mercy:'Plunder Support Cruiser', leech:'Bloodletter Siphon Cruiser', berserker:'Bloodrage Assault Battleship',
+    corroder:'Acidspit Corrosion Cruiser', conduit:'Jury-Rig Conduit Cruiser', splitter:'Boarding Brood Battleship', halo:'Bruiser Bulwark Battleship', reflector:'Riposte Reflector Dreadnought',
     sovereign:'Redhand Line Battleship', thunderer:'Cannonade Artillery Battleship', breaker:'Keelbreaker Siege Battleship',
     aegis:'Bulwark Raider Battleship', havoc:'Rampage Assault Battleship', sentinel:'Deadeye Chain Turret',
     colossus:'Dreadwake War Dreadnought', seraph:'Gallows Lance Dreadnought', bastion:'Blackhold Fortress Dreadnought',
@@ -627,6 +656,7 @@ const FACTION_SHIP_NAMES = {
     titanhawk:'CX-9 Titan Guard', ghost:'CX-10 Null Stealth Unit',
     vanguard:'MX-1 Picket Cruiser', warden:'MX-2 Bulwark Cruiser', tempest:'MX-3 Bombardment Cruiser',
     hivemother:'MX-4 Fabricator Carrier', mercy:'MX-5 Repair Cruiser', leech:'MX-6 Siphon Cruiser', berserker:'BX-6 Overload Battleship',
+    corroder:'MX-7 Corrosion Cruiser', conduit:'MX-8 Conduit Cruiser', splitter:'BX-7 Brood Battleship', halo:'BX-8 Bulwark Battleship', reflector:'DX-5 Reflector Dreadnought',
     sovereign:'BX-1 Line Battleship', thunderer:'BX-2 Artillery Battleship', breaker:'BX-3 Siege Battleship',
     aegis:'BX-4 Aegis Battleship', havoc:'BX-5 Assault Battleship', sentinel:'SX-1 Chain Turret',
     colossus:'DX-1 War Dreadnought', seraph:'DX-2 Lance Dreadnought', bastion:'DX-3 Fortress Dreadnought',
@@ -798,7 +828,7 @@ const DOMINATION_BASE_SETTINGS = { rate:10, batch:4, limit:16, health:1 };
 
 /* ============================== STATE ============================== */
 const W = 3000, H = 2000, MAXSHIPS = 1200;
-let ships=[], shots=[], beams=[], parts=[], inters=[], flares=[], mines=[], bomberQueue=[], debris=[], deployWalls=[], wrecks=[], pods=[], warpGates=[], singularities=[];
+let ships=[], shots=[], beams=[], parts=[], inters=[], flares=[], mines=[], bomberQueue=[], debris=[], deployWalls=[], wrecks=[], pods=[], warpGates=[], singularities=[], storms=[];
 let factionTitanBonuses={};
 let titanBackupEvent={rolled:false, enabled:false, used:false, pending:false, t:0};
 let domination=null;
@@ -2224,6 +2254,12 @@ function makeShip(defId, facId, x, y, a){
   if(d.blink) s.blink={dist:d.blink.dist, cd:d.blink.cd, t:Math.random()*d.blink.cd};
   if(d.siphon) s.siphon=d.siphon;           // fraction of shield damage dealt that refills this ship's shields
   if(d.rage){ s.rage={hp:d.rage.hp, sp:d.rage.sp, rof:d.rage.rof}; s.rageK=0; } // wounded-rage: ramps as hull falls
+  if(d.reflect) s.reflect=d.reflect;        // fraction of incoming damage bounced back to the attacker
+  if(d.corrode) s.corrode=d.corrode;        // acid stacks added to a target per hit
+  if(d.split) s.split={def:d.split.def, count:d.split.count}; // brood spawned on death
+  if(d.projector){ s.projector={hp:d.projector.hp, regen:d.projector.regen}; s.bubbleMax=d.projector.hp;
+    s.bubble={hp:d.projector.hp, t:Infinity, flash:0}; s.bubbleDelay=0; }  // regenerating deflector bubble
+  if(d.shieldAura) s.shieldAura={r:d.shieldAura.r, rate:d.shieldAura.rate, max:d.shieldAura.max||4}; // ally shield recharge field
   if(d.overshield) s.overshield={rate:d.overshield.rate};
   s.flareSets=FLARE_STOCK[d.hull]||0; s.flareCd=0;
   return s;
@@ -2330,16 +2366,29 @@ function collapseFactionFromBase(base, attacker){
   parts.push({x:base.x,y:base.y,vx:0,vy:0,life:1.1,maxLife:1.1,r:760,color:'#ffffff',flash:true});
   toast(FACTIONS[base.fac].name+' command hub destroyed: faction collapse');
 }
-function applyDamage(t, dmg, attacker, undodgeable){
+function applyDamage(t, dmg, attacker, undodgeable, reflected){
   if(t.dead) return;
   if(!undodgeable&&t.dodge>0&&Math.random()<t.dodge){ parts.push({x:t.x,y:t.y,vx:0,vy:0,life:.4,maxLife:.4,r:2,color:'#8899bb',txt:null}); return; }
   if(attacker){
     if(attacker.crit&&Math.random()<attacker.crit) dmg*=2;
     if(attacker.bonus&&attacker.bonus[t.hull]) dmg*=attacker.bonus[t.hull];
   }
+  // reflect: bounce a share of the incoming hit straight back at a living hostile attacker
+  if(t.reflect&&!reflected&&attacker&&attacker!==t&&!attacker.dead&&areHostile(attacker.fac,t.fac)){
+    applyDamage(attacker, dmg*t.reflect, t, true, true);
+    if(parts.length<1500&&Math.random()<.4){ const dxs=attacker.x-t.x,dys=attacker.y-t.y,dd=Math.hypot(dxs,dys)||1;
+      parts.push({x:t.x,y:t.y,vx:dxs/dd*170,vy:dys/dd*170,life:.3,maxLife:.3,r:1.7,color:'#bfe4ff'}); }
+  }
+  // corrosion: attackers with acid rounds stack a hull-eating DoT on the target
+  if(attacker&&attacker.corrode&&!reflected){
+    t.acid=t.acid||{amt:0,t:0};
+    t.acid.amt=Math.min(CORRODE_MAX,t.acid.amt+attacker.corrode);
+    t.acid.t=CORRODE_TIME; t.corrodeBy=attacker;
+  }
   t.shDelay=4;
   if(t.bubble&&t.bubble.hp>0){
     t.bubble.hp-=dmg; t.bubble.flash=.25;
+    if(t.projector) t.bubbleDelay=1.6;   // regenerating bubbles pause before refilling
     if(t.bubble.hp<0){ dmg=-t.bubble.hp; t.bubble.hp=0; } else dmg=0;
   }
   if(dmg>0&&t.sh>0){
@@ -2356,11 +2405,25 @@ function applyDamage(t, dmg, attacker, undodgeable){
     }
   }
   if(dmg>0){ t.hp-=dmg*(1-t.armor); t.hitFlash=.15; }
-  if(t.hp<=0){
-    t.dead=true;
-    if(attacker){ t.lastAttacker=attacker; attacker.kills++; FACTIONS[attacker.fac].kills++; }
-    if(t.pool) t.pool.count--;
-    spawnWreck(t); // 3-second death throes before the actual explosion
+  if(t.hp<=0) killShip(t, attacker);
+}
+function killShip(t, attacker){
+  if(t.dead&&t._killed) return;
+  t.dead=true; t._killed=true;
+  if(attacker){ t.lastAttacker=attacker; attacker.kills++; FACTIONS[attacker.fac].kills++; }
+  if(t.pool) t.pool.count--;
+  if(t.split&&!t.splitDone) spawnBrood(t); // splitters burst into a wing of small ships
+  spawnWreck(t); // 3-second death throes before the actual explosion
+}
+function spawnBrood(t){
+  t.splitDone=true;
+  const cnt=t.split.count||3;
+  for(let i=0;i<cnt&&ships.length+newShips.length<MAXSHIPS;i++){
+    const a=i/cnt*TAU+Math.random()*.4, r=t.size*1.3;
+    const ns=makeShip(t.split.def, t.fac, clamp(t.x+Math.cos(a)*r,20,W-20), clamp(t.y+Math.sin(a)*r,20,H-20), a);
+    ns.parent=t.parent||null;
+    newShips.push(ns);
+    parts.push({x:ns.x,y:ns.y,vx:Math.cos(a)*40,vy:Math.sin(a)*40,life:.4,maxLife:.4,r:ns.size*1.6,color:FACTIONS[t.fac].color,flash:true});
   }
 }
 function projectileDamage(t, sh, base){
@@ -2544,6 +2607,12 @@ function novaShockBomb(wx, wy){
 // then collapses in a final implosion. Unlike the Nova it doesn't instantly wipe
 // a fleet — it herds ships together and crushes the ones it pulls to the centre.
 const SINGULARITY_RADIUS=520, SINGULARITY_CORE=70, SINGULARITY_LIFE=4.6, SINGULARITY_PULL=560, SINGULARITY_DPS=620;
+// player powers
+const EMP_RADIUS=380, EMP_DISABLE=3.6;                    // EMP Pulse: disable window
+const REPAIR_RADIUS=340, REPAIR_HULL=.35, REPAIR_SHIELD=.6; // Repair Nanites: fraction restored
+const STORM_RADIUS=300, STORM_LIFE=7, STORM_SHIELD_DPS=90, STORM_SLOW=.5; // Ion Storm field
+// ship mechanics
+const CORRODE_MAX=45, CORRODE_TIME=2.6;                   // corrosive DoT cap + refresh window
 function deploySingularity(wx, wy){
   wx=clamp(wx,0,W); wy=clamp(wy,0,H);
   singularities.push({x:wx, y:wy, t:SINGULARITY_LIFE, life:SINGULARITY_LIFE, spin:Math.random()*TAU, moteT:0});
@@ -2628,6 +2697,90 @@ function drawSingularities(now){
     ctx.globalAlpha=.28+.5*grow;
     ctx.strokeStyle='#ffffff'; ctx.lineWidth=Math.max(.8,1.4/cam.z);
     ctx.beginPath(); ctx.arc(0,0,rim*.6,0,TAU); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ---------------- EMP Pulse ---------------- */
+// Instantly overloads every mobile ship in the blast, freezing their guns and
+// engines for a few seconds. Bases are hardened against it.
+function deployEMP(wx, wy){
+  wx=clamp(wx,0,W); wy=clamp(wy,0,H);
+  const R2=EMP_RADIUS*EMP_RADIUS; let n=0;
+  for(const s of ships){
+    if(s.dead||s.hull==='base') continue;
+    if((s.x-wx)**2+(s.y-wy)**2<=R2){ disableShip(s,EMP_DISABLE); n++; }
+  }
+  parts.push({x:wx,y:wy,vx:0,vy:0,life:.6,maxLife:.6,r:EMP_RADIUS*1.02,color:'#83f7ff',flash:true});
+  for(let ring=0;ring<2;ring++) for(let i=0;i<52;i++){ const a=i/52*TAU, sp=EMP_RADIUS*(1.8+ring*.6);
+    parts.push({x:wx,y:wy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:.45+ring*.1,maxLife:.6,r:1.8,color:ring?'#bfe4ff':'#83f7ff'}); }
+  toast('⚡ EMP PULSE — '+n+' ship'+(n===1?'':'s')+' disabled '+EMP_DISABLE+'s');
+}
+
+/* ---------------- Repair Nanites ---------------- */
+// A restorative burst that patches hull and recharges shields for every ship in
+// the cloud, friend or foe alike.
+function deployRepair(wx, wy){
+  wx=clamp(wx,0,W); wy=clamp(wy,0,H);
+  const R2=REPAIR_RADIUS*REPAIR_RADIUS; let n=0;
+  for(const s of ships){
+    if(s.dead) continue;
+    if((s.x-wx)**2+(s.y-wy)**2>R2) continue;
+    const dh=Math.min(s.maxHp-s.hp, s.maxHp*REPAIR_HULL), dss=Math.min(s.maxSh-s.sh, s.maxSh*REPAIR_SHIELD);
+    if(dh>0||dss>0){ s.hp=Math.min(s.maxHp,s.hp+dh); s.sh=Math.min(s.maxSh,s.sh+dss); n++;
+      parts.push({x:s.x,y:s.y,vx:0,vy:-16,life:.6,maxLife:.6,r:s.size*.9,color:'#7dff9e',flash:true}); }
+  }
+  parts.push({x:wx,y:wy,vx:0,vy:0,life:.6,maxLife:.6,r:REPAIR_RADIUS,color:'#7dff9e',flash:true});
+  for(let i=0;i<40;i++){ const a=Math.random()*TAU, rr=Math.random()*REPAIR_RADIUS;
+    parts.push({x:wx+Math.cos(a)*rr,y:wy+Math.sin(a)*rr,vx:0,vy:-24,life:.5+Math.random()*.4,maxLife:.9,r:1.6,color:'#7dff9e'}); }
+  toast('✚ REPAIR NANITES — '+n+' ship'+(n===1?'':'s')+' patched');
+}
+
+/* ---------------- Ion Storm ---------------- */
+// A lingering ionised cloud: everything caught inside is slowed and has its
+// shields boiled away for the storm's duration.
+function deployIonStorm(wx, wy){
+  wx=clamp(wx,0,W); wy=clamp(wy,0,H);
+  storms.push({x:wx, y:wy, r:STORM_RADIUS, t:STORM_LIFE, life:STORM_LIFE, spin:Math.random()*TAU, boltT:0});
+  toast('🌩 ION STORM — a slowing, shield-draining cloud rolls in');
+}
+function updateStorms(dt){
+  if(!storms.length) return;
+  for(const g of storms){
+    g.t-=dt; g.spin+=dt*1.2; g.boltT-=dt;
+    const R2=g.r*g.r;
+    for(const s of ships){
+      if(s.dead||s.hull==='base') continue;
+      if((s.x-g.x)**2+(s.y-g.y)**2>R2) continue;
+      s.ionT=Math.max(s.ionT||0,.3);                 // mark as ion-slowed this frame
+      if(s.sh>0){ s.sh=Math.max(0,s.sh-STORM_SHIELD_DPS*dt); s.shFlash=.2; s.shDelay=Math.max(s.shDelay||0,1); }
+    }
+    if(g.boltT<=0&&parts.length<1500){
+      g.boltT=.05;
+      const a=Math.random()*TAU, rr=Math.random()*g.r;
+      parts.push({x:g.x+Math.cos(a)*rr,y:g.y+Math.sin(a)*rr,vx:(Math.random()-.5)*40,vy:(Math.random()-.5)*40,life:.2+Math.random()*.2,maxLife:.4,r:1.2+Math.random()*1.6,color:Math.random()<.5?'#83f7ff':'#c9f6ff'});
+    }
+  }
+  storms=storms.filter(g=>g.t>0);
+}
+function drawStorms(now){
+  for(const g of storms){
+    const life=clamp(g.t/g.life,0,1), pulse=.5+.5*Math.sin(now*.02);
+    ctx.save(); ctx.translate(g.x,g.y);
+    ctx.globalAlpha=(.10+.06*pulse)*Math.min(1,life*2);
+    ctx.fillStyle='#1b3550'; ctx.beginPath(); ctx.arc(0,0,g.r,0,TAU); ctx.fill();
+    ctx.globalAlpha=(.4+.2*pulse)*Math.min(1,life*2);
+    ctx.strokeStyle='#83f7ff'; ctx.lineWidth=Math.max(1.2,2.2/cam.z);
+    ctx.setLineDash([10/cam.z,7/cam.z]);
+    ctx.rotate(g.spin); ctx.beginPath(); ctx.arc(0,0,g.r*.96,0,TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    // crackling arcs
+    ctx.globalAlpha=.5*Math.min(1,life*2); ctx.strokeStyle='#c9f6ff'; ctx.lineWidth=Math.max(.8,1.3/cam.z);
+    ctx.beginPath();
+    for(let i=0;i<5;i++){ const a=now*.003+i*1.7+g.spin, r1=g.r*.2, r2=g.r*(.6+.35*Math.sin(now*.01+i));
+      ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1); ctx.lineTo(Math.cos(a+.5)*r2,Math.sin(a+.5)*r2); }
+    ctx.stroke();
     ctx.restore();
   }
   ctx.globalAlpha=1;
@@ -3002,6 +3155,22 @@ function updateShip(s, dt){
       parts.push({x:s.x+Math.cos(a)*r,y:s.y+Math.sin(a)*r,vx:(Math.random()-.5)*30,vy:(Math.random()-.5)*30-16,life:.2+Math.random()*.25,maxLife:.45,r:1.4+Math.random()*2,color:Math.random()<.5?'#ff5a3c':'#ffb347'});
     }
   }
+  if(s.ionT>0) s.ionT=Math.max(0,s.ionT-dt); // ion-storm slow decays once out of the cloud
+  // corrosion: acid eats hull directly (bypasses shields), then fades
+  if(s.acid&&s.acid.t>0){
+    s.acid.t-=dt;
+    s.hp-=s.acid.amt*(1-s.armor)*dt;
+    if(Math.random()<dt*7&&parts.length<1500){ const a=Math.random()*TAU, r=s.size*(.3+Math.random()*.8);
+      parts.push({x:s.x+Math.cos(a)*r,y:s.y+Math.sin(a)*r,vx:(Math.random()-.5)*18,vy:12+Math.random()*14,life:.3+Math.random()*.3,maxLife:.6,r:1.2+Math.random()*1.7,color:Math.random()<.5?'#9dff5e':'#c8ff7a'}); }
+    if(s.acid.t<=0) s.acid=null;
+    if(s.hp<=0){ killShip(s, s.corrodeBy); return; }
+  }
+  // regenerating deflector bubble (projector ships): refills after a short lull
+  if(s.projector&&s.bubble){
+    if(s.bubbleDelay>0) s.bubbleDelay-=dt;
+    else if(s.bubble.hp<s.projector.hp) s.bubble.hp=Math.min(s.projector.hp, s.bubble.hp+s.projector.regen*dt);
+    if(s.bubble.flash>0) s.bubble.flash-=dt;
+  }
   if(s.disabledT>0){
     s.disabledT=Math.max(0,s.disabledT-dt);
     s.vx=0; s.vy=0;
@@ -3062,7 +3231,7 @@ function updateShip(s, dt){
     }
     parts.push({x:s.x,y:s.y,vx:0,vy:0,life:.5,maxLife:.5,r:s.size*2.6,color:'#9fd0ff',flash:true});
   }
-  if(s.bubble){
+  if(s.bubble&&!s.projector){
     s.bubble.t-=dt;
     if(s.bubble.flash>0) s.bubble.flash-=dt;
     if(s.bubble.t<=0||s.bubble.hp<=0) s.bubble=null;
@@ -3083,6 +3252,20 @@ function updateShip(s, dt){
         if(a.hp>before){
           beams.push({x1:s.x,y1:s.y,x2:a.x,y2:a.y,life:.52,maxLife:.52,color:'#7dff9e',w:1.05,soft:true});
           if(Math.random()<.45) parts.push({x:a.x,y:a.y,vx:0,vy:-15,life:.5,maxLife:.5,r:2,color:'#7dff9e'});
+        }
+      }
+    }
+    if(s.shieldAura){
+      const targets=queryCircle(s.x,s.y,s.shieldAura.r)
+        .filter(a=>a.fac===s.fac&&!a.dead&&a!==s&&a.sh<a.maxSh&&a.shDelay<=0)
+        .sort((a,b)=>dist2(s,a)-dist2(s,b))
+        .slice(0,s.shieldAura.max);
+      for(const a of targets){
+        const before=a.sh;
+        a.sh=Math.min(a.maxSh, a.sh+s.shieldAura.rate*.5);
+        if(a.sh>before){
+          beams.push({x1:s.x,y1:s.y,x2:a.x,y2:a.y,life:.52,maxLife:.52,color:'#7fd4ff',w:1.05,soft:true});
+          if(Math.random()<.45) parts.push({x:a.x,y:a.y,vx:0,vy:-15,life:.5,maxLife:.5,r:2,color:'#7fd4ff'});
         }
       }
     }
@@ -3369,7 +3552,7 @@ function updateShip(s, dt){
     !pointDefenseCanDeploy(s)&&(s.deployT<=0||s.wallHp<=0||s.wallMode!=='broadside')&&broadsideReady){
     activateDeployWall(s,!(s.wallHp>0),'broadside');
   }
-  const spd=s.sp*(s.cloak?1.3:1)*spdF*((deployLocked&&!piloted)?0:1)*((s.afterburner&&s.afterburner.active>0)?s.afterburner.boost:1)*((s.rage&&s.rageK)?1+(s.rage.sp-1)*s.rageK:1);
+  const spd=s.sp*(s.cloak?1.3:1)*spdF*((deployLocked&&!piloted)?0:1)*((s.afterburner&&s.afterburner.active>0)?s.afterburner.boost:1)*((s.rage&&s.rageK)?1+(s.rage.sp-1)*s.rageK:1)*(s.ionT>0?STORM_SLOW:1);
   const moveHeading=moveA===null?s.a:moveA;
   s.vx=Math.cos(moveHeading)*spd; s.vy=Math.sin(moveHeading)*spd;
   s.x+=s.vx*dt; s.y+=s.vy*dt;
@@ -3677,6 +3860,7 @@ function update(dt){
   updateTitanBackupEvent(dt);
   updateWarpGates(dt);
   updateSingularities(dt);
+  updateStorms(dt);
   updateDomination(dt);
   ships=ships.filter(s=>!s.dead); ships.push(...newShips);
   shots=shots.filter(s=>s.life>0);
@@ -3786,6 +3970,15 @@ const VARIANT_DETAIL = {
   colossus(c,s){ c.moveTo(s*.63,s*.28); c.arc(s*.5,s*.28,s*.13,0,TAU); c.moveTo(s*.63,-s*.28); c.arc(s*.5,-s*.28,s*.13,0,TAU); c.moveTo(-s*.07,s*.28); c.arc(-s*.2,s*.28,s*.13,0,TAU); c.moveTo(-s*.07,-s*.28); c.arc(-s*.2,-s*.28,s*.13,0,TAU); },
   seraph(c,s){ c.moveTo(s*1.3,0); c.lineTo(-s*.9,0); c.moveTo(s*.9,0); c.lineTo(s*.65,s*.16); c.lineTo(s*.4,0); c.lineTo(s*.65,-s*.16); c.closePath(); },
   bastion(c,s){ c.rect(-s*.45,-s*.4,s*.9,s*.8); c.rect(-s*.28,-s*.24,s*.56,s*.48); },
+  reflector(c,s){ c.moveTo(s*.15,s*.5); c.lineTo(s*.6,0); c.lineTo(s*.15,-s*.5); c.moveTo(-s*.2,s*.5); c.lineTo(s*.25,0); c.lineTo(-s*.2,-s*.5); },
+  /* new cruisers */
+  leech(c,s){ c.moveTo(s*.55,s*.32); c.lineTo(s*.18,0); c.lineTo(s*.55,-s*.32); c.moveTo(-s*.1,s*.28); c.lineTo(-s*.4,0); c.lineTo(-s*.1,-s*.28); },
+  corroder(c,s){ c.moveTo(s*.5,0); c.arc(s*.35,0,s*.15,0,TAU); c.moveTo(s*.02,s*.22); c.arc(-s*.13,s*.22,s*.1,0,TAU); c.moveTo(s*.02,-s*.22); c.arc(-s*.13,-s*.22,s*.1,0,TAU); },
+  conduit(c,s){ c.moveTo(s*.4,0); c.lineTo(-s*.4,0); c.moveTo(0,s*.32); c.lineTo(0,-s*.32); c.moveTo(s*.16,0); c.arc(0,0,s*.16,0,TAU); },
+  /* new battleships */
+  berserker(c,s){ c.moveTo(s*.62,s*.36); c.lineTo(s*.12,s*.04); c.lineTo(s*.42,-s*.06); c.lineTo(-s*.12,-s*.42); },
+  splitter(c,s){ c.moveTo(-s*.42,0); c.lineTo(s*.08,0); c.lineTo(s*.55,s*.32); c.moveTo(s*.08,0); c.lineTo(s*.55,-s*.32); c.moveTo(s*.08,0); c.lineTo(s*.08,0); },
+  halo(c,s){ c.moveTo(Math.cos(-.95)*s*.55,Math.sin(-.95)*s*.55); c.arc(0,0,s*.55,-.95,.95); c.moveTo(Math.cos(-1.15)*s*.32,Math.sin(-1.15)*s*.32); c.arc(0,0,s*.32,-1.15,1.15); },
 };
 function drawHullShape(c, hull, s, fac){
   c.beginPath();
@@ -3877,6 +4070,7 @@ function draw(){
 
   drawWarpGates(now);
   drawSingularities(now);
+  drawStorms(now);
 
   // hull debris fragments
   for(const d of debris){
@@ -4143,31 +4337,17 @@ function draw(){
 
   drawPilotOverlay(now);
 
-  // Nova Shock Bomb blast-radius preview follows the cursor while the tool is armed
-  if(activeTool==='nova'){
-    const w=screenToWorld(mouse.px,mouse.py);
+  // Player-power radius preview follows the cursor while a power is armed
+  if(POWERS[activeTool]){
+    const p=POWERS[activeTool], w=screenToWorld(mouse.px,mouse.py), R=p.r();
     ctx.save();
-    ctx.globalAlpha=.9; ctx.strokeStyle='#ffd27f'; ctx.lineWidth=Math.max(1.6,2.6/cam.z);
+    ctx.globalAlpha=.85; ctx.strokeStyle=p.color; ctx.lineWidth=Math.max(1.6,2.6/cam.z);
     ctx.setLineDash([14/cam.z,9/cam.z]);
-    ctx.beginPath(); ctx.arc(w.x,w.y,NOVA_BOMB_RADIUS,0,TAU); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha=.16; ctx.fillStyle='#ff7a4d';
-    ctx.beginPath(); ctx.arc(w.x,w.y,NOVA_BOMB_RADIUS,0,TAU); ctx.fill();
-    ctx.globalAlpha=1; ctx.fillStyle='#ffd27f';
-    ctx.beginPath(); ctx.arc(w.x,w.y,5/cam.z,0,TAU); ctx.fill();
-    ctx.restore();
-  }
-  // Singularity reach + core preview
-  if(activeTool==='singularity'){
-    const w=screenToWorld(mouse.px,mouse.py);
-    ctx.save();
-    ctx.globalAlpha=.85; ctx.strokeStyle='#c79bff'; ctx.lineWidth=Math.max(1.6,2.6/cam.z);
-    ctx.setLineDash([14/cam.z,9/cam.z]);
-    ctx.beginPath(); ctx.arc(w.x,w.y,SINGULARITY_RADIUS,0,TAU); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha=.14; ctx.fillStyle='#7fd4ff';
-    ctx.beginPath(); ctx.arc(w.x,w.y,SINGULARITY_RADIUS,0,TAU); ctx.fill();
-    ctx.globalAlpha=.9; ctx.strokeStyle='#c79bff';
-    ctx.beginPath(); ctx.arc(w.x,w.y,SINGULARITY_CORE,0,TAU); ctx.stroke();
-    ctx.globalAlpha=1; ctx.fillStyle='#c79bff';
+    ctx.beginPath(); ctx.arc(w.x,w.y,R,0,TAU); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=.14; ctx.fillStyle=p.fill||p.color;
+    ctx.beginPath(); ctx.arc(w.x,w.y,R,0,TAU); ctx.fill();
+    if(p.core){ ctx.globalAlpha=.9; ctx.strokeStyle=p.color; ctx.beginPath(); ctx.arc(w.x,w.y,p.core,0,TAU); ctx.stroke(); }
+    ctx.globalAlpha=1; ctx.fillStyle=p.color;
     ctx.beginPath(); ctx.arc(w.x,w.y,5/cam.z,0,TAU); ctx.fill();
     ctx.restore();
   }
@@ -4230,6 +4410,16 @@ const AIM_CURSOR_SPEED=215, AIM_SMOOTH_TAU=.12;
 let pilot={ship:null,fac:null,aimWorld:null,aimScreen:null,aimOff:null,aimVX:0,aimVY:0,aimA:0,
   lockTarget:null,fire:false,manualFire:false,onTarget:false,
   keys:{},stickX:0,stickY:0,stickPointer:null,aimX:0,aimY:0,aimActive:false,aimPointer:null,inputMode:'mouse'};
+// Player powers, unified so the expandable Powers menu, canvas clicks, cursor
+// previews and messaging all share one registry.
+const POWERS = {
+  nova:       { label:'Nova Bomb',     fire:novaShockBomb,   r:()=>NOVA_BOMB_RADIUS,   color:'#ffd27f', fill:'#ff7a4d', msg:'Nova Bomb: click to vaporise every ship in a huge blast' },
+  singularity:{ label:'Singularity',   fire:deploySingularity,r:()=>SINGULARITY_RADIUS, color:'#c79bff', fill:'#7fd4ff', core:SINGULARITY_CORE, msg:'Singularity: click to collapse a gravity well that drags ships in and crushes its core' },
+  emp:        { label:'EMP Pulse',     fire:deployEMP,       r:()=>EMP_RADIUS,         color:'#83f7ff', msg:'EMP Pulse: click to disable every ship in the blast for a few seconds' },
+  repair:     { label:'Repair Nanites',fire:deployRepair,    r:()=>REPAIR_RADIUS,      color:'#7dff9e', msg:'Repair Nanites: click to patch hull and recharge shields for ships in the cloud' },
+  storm:      { label:'Ion Storm',     fire:deployIonStorm,  r:()=>STORM_RADIUS,       color:'#83f7ff', fill:'#1b3550', msg:'Ion Storm: click to drop a lingering cloud that slows ships and drains shields' },
+};
+function isPowerTool(t){ return !!POWERS[t]; }
 function screenToWorld(mx,my){ return { x:(mx*devicePixelRatio-cw/2)/(cam.z*devicePixelRatio)+cam.x, y:(my*devicePixelRatio-ch/2)/(cam.z*devicePixelRatio)+cam.y }; }
 function shipAtScreen(mx,my){
   const w=screenToWorld(mx,my);
@@ -4498,8 +4688,7 @@ cv.addEventListener('mousedown', e=>{
       }
       mouse.pan=true; e.preventDefault(); return;
     }
-    if(activeTool==='nova'){ const w=screenToWorld(mx,my); novaShockBomb(w.x,w.y); e.preventDefault(); return; }
-    if(activeTool==='singularity'){ const w=screenToWorld(mx,my); deploySingularity(w.x,w.y); e.preventDefault(); return; }
+    if(POWERS[activeTool]){ const w=screenToWorld(mx,my); POWERS[activeTool].fire(w.x,w.y); e.preventDefault(); return; }
     if(activeTool==='erase'){ mouse.erase=true; eraseAt(mx,my); }
     else { mouse.down=true; trySpawnAt(mx,my,true); }
   }
@@ -4555,8 +4744,7 @@ cv.addEventListener('touchstart', e=>{
       }
       mouse.pan=true;
     }
-    else if(activeTool==='nova'){ const w=screenToWorld(mx,my); novaShockBomb(w.x,w.y); }
-    else if(activeTool==='singularity'){ const w=screenToWorld(mx,my); deploySingularity(w.x,w.y); }
+    else if(POWERS[activeTool]){ const w=screenToWorld(mx,my); POWERS[activeTool].fire(w.x,w.y); }
     else if(activeTool==='erase'){ mouse.erase=true; eraseAt(mx,my); }
     else { mouse.down=true; trySpawnAt(mx,my,true); }
   } else {
@@ -4858,7 +5046,7 @@ function buildUI(){
     const c=document.createElement('div'); c.className='sc'; c.id='sc_'+id; c.style.color=f.color;
     $('score').appendChild(c);
   }
-  $('btnClear').onclick=()=>{ ships=[]; shots=[]; beams=[]; parts=[]; inters=[]; flares=[]; mines=[]; bomberQueue=[]; debris=[]; deployWalls=[]; wrecks=[]; pods=[]; singularities=[]; resetBattleEvents(); Object.values(FACTIONS).forEach(f=>f.kills=0); refreshScore(); toast('Battlefield cleared'); };
+  $('btnClear').onclick=()=>{ ships=[]; shots=[]; beams=[]; parts=[]; inters=[]; flares=[]; mines=[]; bomberQueue=[]; debris=[]; deployWalls=[]; wrecks=[]; pods=[]; singularities=[]; storms=[]; resetBattleEvents(); Object.values(FACTIONS).forEach(f=>f.kills=0); refreshScore(); toast('Battlefield cleared'); };
   $('btnPause').onclick=togglePause;
   $('btnBonus').onclick=toggleBattleBonuses;
   $('btnMines').onclick=toggleMines;
@@ -4869,6 +5057,9 @@ function buildUI(){
   $('settingsClose').onclick=()=>setSettingsOpen(false);
   $('infoClose').onclick=closeInfoPanel;
   $('infoCollapse').onclick=toggleInfoCollapsed;
+  $('btnPower').onclick=e=>{ $('powerCtl').classList.toggle('open'); e.stopPropagation(); };
+  document.querySelectorAll('.powerChoice').forEach(b=>b.onclick=e=>{ setActiveTool(b.dataset.power,true); $('powerCtl').classList.remove('open'); e.stopPropagation(); });
+  document.addEventListener('click',e=>{ const ctl=$('powerCtl'); if(ctl&&!ctl.contains(e.target)) ctl.classList.remove('open'); });
   $('btnSpeed').onclick=e=>{ $('speedCtl').classList.toggle('open'); e.stopPropagation(); };
   document.querySelectorAll('.speedChoice').forEach(b=>b.onclick=e=>{ setSpeed(+b.dataset.sp); $('speedCtl').classList.remove('open'); e.stopPropagation(); });
   document.addEventListener('click',e=>{ const ctl=$('speedCtl'); if(ctl&&!ctl.contains(e.target)) ctl.classList.remove('open'); });
@@ -4930,13 +5121,16 @@ function setActiveTool(tool,announce){
   activeTool=tool;
   refreshToolButton();
   if(announce){
-    const msg=tool==='follow'?'Follow tool: click a ship to track it':tool==='pilot'?'Pilot tool: click one of your selected faction ships to control it':tool==='move'?'Move tool: drag to pan safely':tool==='nova'?'Nova Shock Bomb: click the map to vaporise every ship in a huge blast':tool==='singularity'?'Singularity: click the map to collapse a gravity well that drags ships in and crushes its core':tool==='erase'?'Erase tool: tap or drag over ships to remove them':'Deploy tool: tap or drag to place ships';
+    const msg=POWERS[tool]?POWERS[tool].msg:(tool==='follow'?'Follow tool: click a ship to track it':tool==='pilot'?'Pilot tool: click one of your selected faction ships to control it':tool==='move'?'Move tool: drag to pan safely':tool==='erase'?'Erase tool: tap or drag over ships to remove them':'Deploy tool: tap or drag to place ships');
     toast(msg);
   }
 }
 function refreshToolButton(){
   document.querySelectorAll('.toolBtn').forEach(b=>b.classList.toggle('on',b.dataset.tool===activeTool));
-  cv.style.cursor=activeTool==='erase'?'not-allowed':(activeTool==='move'?'grab':(activeTool==='follow'||activeTool==='pilot'||activeTool==='nova'||activeTool==='singularity'?'pointer':'crosshair'));
+  const powerOn=isPowerTool(activeTool);
+  const bp=$('btnPower'); if(bp){ bp.classList.toggle('on',powerOn); bp.textContent=powerOn?'◈ '+POWERS[activeTool].label:'◈ Powers'; }
+  document.querySelectorAll('.powerChoice').forEach(b=>b.classList.toggle('on',b.dataset.power===activeTool));
+  cv.style.cursor=activeTool==='erase'?'not-allowed':(activeTool==='move'?'grab':(activeTool==='follow'||activeTool==='pilot'||powerOn?'pointer':'crosshair'));
 }
 function refreshUI(){
   document.querySelectorAll('.facBtn').forEach(b=>b.classList.toggle('on', b.dataset.id===selFac));
@@ -4998,6 +5192,13 @@ function showShipInfo(id){
   spec.push('Friendly spacing: keeps one ship-length lane from allies');
   if(d.bonus) spec.push('Bonus dmg vs '+Object.keys(d.bonus).map(k=>HULLS[k].label).join('/'));
   if(d.heal) spec.push('Repairs up to '+(d.heal.max||3)+' nearby allies '+d.heal.rate+' hp/s');
+  if(d.shieldAura) spec.push('Recharges up to '+d.shieldAura.max+' nearby allied shields '+d.shieldAura.rate+'/s in '+d.shieldAura.r+' radius');
+  if(d.siphon) spec.push('Siphon: refills '+Math.round(d.siphon*100)+'% of shield damage dealt as its own shields');
+  if(d.rage) spec.push('Wounded rage: below '+Math.round(d.rage.hp*100)+'% hull, ramps up to +'+Math.round((d.rage.rof-1)*100)+'% fire rate and +'+Math.round((d.rage.sp-1)*100)+'% speed at death’s door');
+  if(d.reflect) spec.push('Reflect: bounces '+Math.round(d.reflect*100)+'% of every incoming hit back at the attacker');
+  if(d.corrode) spec.push('Corrosive rounds: stack a hull-eating acid DoT (bypasses shields, up to '+CORRODE_MAX+'/s)');
+  if(d.split) spec.push('Death brood: bursts into '+d.split.count+' '+(factionShipName(d.split.def,selFac).split(' ')[0])+' fighters when destroyed');
+  if(d.projector) spec.push('Regenerating deflector bubble: '+d.projector.hp+' HP layer, regens '+d.projector.regen+'/s after a lull');
   if(d.carrier) spec.push('Launches drones (max '+d.carrier.max+')');
   if(d.stealth) spec.push('Cloak: decloaks to fire, re-cloaks after '+d.stealth.open+'s · max '+d.stealth.budget+'s cloaked per '+d.stealth.window+'s');
   if(d.pd||ANTI_TORPEDO_PD[d.hull]) spec.push(d.hull==='titan'?'Titan missile-defense lasers: one ordinary missile every 0.5-1.5s; only scratch ships':'Anti-torpedo lasers: destroy torpedoes, not ordinary missiles');
@@ -5174,7 +5375,7 @@ function fleetAt(fac, x, y, a, scale, skirmishFiltered){
   for(let i=0;i<cruiserN;i++) spawn(pick(C),fac,x+(Math.random()-.5)*330*scale,y+(Math.random()-.5)*330*scale,a,1);
   for(let i=0;i<fighterWings;i++) spawn(pick(F),fac,x+(Math.random()-.5)*390*scale,y+(Math.random()-.5)*390*scale,a,fighterWingSize());
 }
-function clearAll(){ ships=[]; shots=[]; beams=[]; parts=[]; inters=[]; flares=[]; mines=[]; bomberQueue=[]; debris=[]; deployWalls=[]; wrecks=[]; pods=[]; singularities=[]; resetBattleEvents(); Object.values(FACTIONS).forEach(f=>f.kills=0); for(const id in factionPrevAlive) factionPrevAlive[id]=0; refreshScore(); }
+function clearAll(){ ships=[]; shots=[]; beams=[]; parts=[]; inters=[]; flares=[]; mines=[]; bomberQueue=[]; debris=[]; deployWalls=[]; wrecks=[]; pods=[]; singularities=[]; storms=[]; resetBattleEvents(); Object.values(FACTIONS).forEach(f=>f.kills=0); for(const id in factionPrevAlive) factionPrevAlive[id]=0; refreshScore(); }
 function randomSkirmish(){
   clearAll();
   const facs=Object.keys(FACTIONS).sort(()=>Math.random()-.5).slice(0,2);
