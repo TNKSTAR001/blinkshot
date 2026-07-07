@@ -355,7 +355,7 @@
         <div class="pilotBar" id="pilotShield"><span></span></div>
         <div class="pilotBar" id="pilotHull"><span></span></div>
       </div>
-      <div id="pilotHint">Move stick / WASD thrusts · Aim stick (or mouse) faces &amp; auto-fires when a foe sits in the crosshair · tap/click a foe to lock · Esc or Exit releases</div>
+      <div id="pilotHint">Move stick / WASD thrusts any direction — strafe &amp; reverse freely · Aim stick (or mouse) faces &amp; auto-fires when a foe sits in the crosshair · tap/click a foe to lock · Esc or Exit releases</div>
     </div>
     <div id="pilotTouch">
       <div class="pilotPad" id="pilotStick"><div id="pilotStickKnob"></div><div class="padTag">Move</div></div>
@@ -392,8 +392,8 @@
         <b>Fleet spacing:</b> friendly ships dynamically widen formation lanes by hull size, watch allied traffic ahead of them, and try to keep at least one ship length between allied hulls. When packed together, they slide sideways into open lanes instead of breaking formation; fighters and cruisers yield around heavier hulls rather than pushing them off course.<br><br>
         <b>Capital broadsides:</b> battleships, dreadnoughts, and titans close to a heavy-ship duel range, turn side-on, then slowly circle while firing. Titans seek titans first; other capital ships only prefer same-class broadsides when that same class is closer than a larger capital, otherwise they focus the largest enemy hull. Engaged ships avoid contact with side-slips instead of turning tail.<br><br>
         <b>Scenario sizes:</b> Random Skirmish and Domination can be launched as Small, Medium, Large, or Epic from the scenario size buttons. Domination creates two bases fighting over No Man's Land; the dominant team inside the zone captures it (Battlefield-style) — the capture bar fills toward whichever faction has more ships, and if the balance flips before it completes the progress rewinds at the same rate instead of resetting. Capture takes 30 seconds. A held zone must first be neutralized: a rival has to stay dominant for 5 seconds to break the hold before it can capture. Hold 3 minutes to win, or longest hold wins after 5 minutes. The zone border is grey and dotted while neutral and turns the owner's colour once captured. Domination fleets are scaled down to fit each side's half and start staged behind No Man's Land so neither team reaches it first, and Base Production is locked to fixed values (every 10s, 4 per wave, 16 active per base, x1 health, all classes) so neither side can out-produce the other.<br><br>
-        <b>Controls:</b> Use Deploy, Move, Follow, Pilot, or Erase mode · Pilot uses WASD/Arrows to thrust, the mouse to aim the crosshair, and auto-fires the moment a foe sits under it (click a foe to lock) · right-click delete · mouse wheel zoom · middle-mouse or Shift+drag to pan · Space to pause · F or the Fleet Menu fullscreen button for full-page fullscreen · the eye button hides screen controls.<br>
-<b>Touch controls:</b> choose Deploy, Move, Pilot, or Erase · Pilot shows twin sticks after you tap one of your faction ships — the left stick thrusts, the right stick aims and steers the crosshair, and guns fire automatically once a foe is in the crosshair (tap a foe to lock it) · two-finger drag to pan, pinch to zoom · open the ☰ Fleet Menu for all fleet options.<br>
+        <b>Controls:</b> Use Deploy, Move, Follow, Pilot, or Erase mode · Pilot uses WASD/Arrows to thrust in any direction while the mouse aims and faces the ship — so you can strafe sideways or reverse without turning (side-slip is 15% slower, reverse 30% slower) — and auto-fires the moment a foe sits under the crosshair (click a foe to lock) · right-click delete · mouse wheel zoom · middle-mouse or Shift+drag to pan · Space to pause · F or the Fleet Menu fullscreen button for full-page fullscreen · the eye button hides screen controls.<br>
+<b>Touch controls:</b> choose Deploy, Move, Pilot, or Erase · Pilot shows twin sticks after you tap one of your faction ships — the left stick thrusts in any direction — hold the right stick on a foe and the left stick lets you strafe sideways or reverse without turning (side-slip is 15% slower, reverse 30% slower) — the right stick aims and steers the crosshair, and guns fire automatically once a foe is in the crosshair (tap a foe to lock it) · two-finger drag to pan, pinch to zoom · open the ☰ Fleet Menu for all fleet options.<br>
         Try the <b>Scenario</b> buttons for instant battles!
         <br><button id="btnStart">ENGAGE</button>
       </div>
@@ -4087,7 +4087,7 @@ const PILOT_MOVE_KEYS=new Set(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft'
 // A hands-on pilot out-runs and out-ranges the AI baseline, and its guns open up
 // automatically the moment the crosshair rests on a hostile.
 const PILOT_RANGE_MUL=1.6, PILOT_SPEED_MUL=1.55, PILOT_AIM_CONE=.26;
-let pilot={ship:null,fac:null,aimWorld:null,aimA:0,lockTarget:null,fire:false,manualFire:false,onTarget:false,
+let pilot={ship:null,fac:null,aimWorld:null,aimScreen:null,aimA:0,lockTarget:null,fire:false,manualFire:false,onTarget:false,
   keys:{},stickX:0,stickY:0,stickPointer:null,aimX:0,aimY:0,aimActive:false,aimPointer:null,inputMode:'mouse'};
 function screenToWorld(mx,my){ return { x:(mx*devicePixelRatio-cw/2)/(cam.z*devicePixelRatio)+cam.x, y:(my*devicePixelRatio-ch/2)/(cam.z*devicePixelRatio)+cam.y }; }
 function shipAtScreen(mx,my){
@@ -4170,7 +4170,7 @@ function clearPilot(announce,keepTool){
   const had=!!pilot.ship;
   removePilotBoost(pilot.ship);
   pilot.ship=null; pilot.fac=null; pilot.lockTarget=null;
-  pilot.fire=false; pilot.manualFire=false; pilot.onTarget=false; pilot.aimWorld=null; pilot.keys={};
+  pilot.fire=false; pilot.manualFire=false; pilot.onTarget=false; pilot.aimWorld=null; pilot.aimScreen=null; pilot.keys={};
   resetPilotStick();
   document.body.classList.remove('piloting');
   if(!keepTool&&activeTool==='pilot') activeTool='move';
@@ -4181,7 +4181,7 @@ function validatePilot(){
   if(activeTool==='pilot'&&pilot.ship&&!pilotShipAlive(pilot.ship)){ clearPilot(true,true); return false; }
   return !!isPilotedShip(pilot.ship);
 }
-function pilotAimFromScreen(mx,my){ pilot.aimWorld=screenToWorld(mx,my); }
+function pilotAimFromScreen(mx,my){ pilot.aimScreen={x:mx,y:my}; pilot.aimWorld=screenToWorld(mx,my); }
 function pilotInputVector(){
   let x=(pilot.keys.KeyD||pilot.keys.ArrowRight?1:0)-(pilot.keys.KeyA||pilot.keys.ArrowLeft?1:0);
   let y=(pilot.keys.KeyS||pilot.keys.ArrowDown?1:0)-(pilot.keys.KeyW||pilot.keys.ArrowUp?1:0);
@@ -4191,13 +4191,27 @@ function pilotInputVector(){
   return {x,y,len:Math.min(1,len)};
 }
 function pilotAiming(){ return pilot.aimActive&&Math.hypot(pilot.aimX,pilot.aimY)>.15; }
+// Where the nose points: the aim stick (touch) or the mouse crosshair (desktop)
+// owns the ship's facing so the hull can strafe; with no aim reference the nose
+// simply follows the direction of travel.
+function pilotFacing(s,moveA){
+  if(pilotAiming()) return Math.atan2(pilot.aimY,pilot.aimX);
+  if(pilot.inputMode==='mouse'&&pilot.aimWorld) return Math.atan2(pilot.aimWorld.y-s.y,pilot.aimWorld.x-s.x);
+  return moveA!==null?moveA:s.a;
+}
 function pilotControlForShip(s){
   const v=pilotInputVector();
   const moveA=v.len>.05?Math.atan2(v.y,v.x):null;
-  // The aim stick owns the ship's facing (so you can strafe while covering a
-  // flank); otherwise the nose follows the direction of travel.
-  const desired=pilotAiming()?Math.atan2(pilot.aimY,pilot.aimX):(moveA!==null?moveA:s.a);
-  return {desired, moveA, spdF:v.len>.05?(.18+v.len*1.05):0};
+  const desired=pilotFacing(s,moveA);
+  let spdF=0;
+  if(moveA!==null){
+    // Thrust is world-absolute, so the ship can reverse and side-slip without
+    // spinning round. Cost of moving off the nose blends smoothly with heading
+    // offset: full speed ahead, 15% slower sideways, 30% slower in reverse.
+    const strafe=.85+.15*Math.cos(angDiff(s.a,moveA));
+    spdF=(.18+v.len*1.05)*strafe;
+  }
+  return {desired, moveA, spdF};
 }
 function pilotPickTarget(s){
   const aim=pilot.aimWorld||{x:s.x+Math.cos(s.a)*(s.maxRng||260),y:s.y+Math.sin(s.a)*(s.maxRng||260)};
@@ -4220,6 +4234,9 @@ function refreshPilotAim(s){
   if(pilotAiming()){
     pilot.aimA=Math.atan2(pilot.aimY,pilot.aimX);
     pilot.aimWorld={x:s.x+Math.cos(pilot.aimA)*reach,y:s.y+Math.sin(pilot.aimA)*reach};
+  } else if(pilot.inputMode==='mouse'&&pilot.aimScreen){
+    // Keep the reticle pinned under the cursor as the camera tracks the ship.
+    pilot.aimWorld=screenToWorld(pilot.aimScreen.x,pilot.aimScreen.y);
   } else if(pilot.inputMode==='touch'){
     // No aim-stick input on touch → let the crosshair ride the nose so the ship
     // still fires at whatever it is flying toward.
