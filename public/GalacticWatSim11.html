@@ -355,7 +355,7 @@
         <div class="pilotBar" id="pilotShield"><span></span></div>
         <div class="pilotBar" id="pilotHull"><span></span></div>
       </div>
-      <div id="pilotHint">Move stick / WASD thrusts any direction — strafe &amp; reverse freely · Aim stick (or mouse) faces &amp; auto-fires when a foe sits in the crosshair · tap/click a foe to lock · Esc or Exit releases</div>
+      <div id="pilotHint">Move stick / WASD thrusts any direction — strafe &amp; reverse freely · Aim stick glides the sights like a trackpad (any direction, near or far) &amp; auto-fires when a foe sits under them · tap/click a foe to lock · Esc or Exit releases</div>
     </div>
     <div id="pilotTouch">
       <div class="pilotPad" id="pilotStick"><div id="pilotStickKnob"></div><div class="padTag">Move</div></div>
@@ -393,7 +393,7 @@
         <b>Capital broadsides:</b> battleships, dreadnoughts, and titans close to a heavy-ship duel range, turn side-on, then slowly circle while firing. Titans seek titans first; other capital ships only prefer same-class broadsides when that same class is closer than a larger capital, otherwise they focus the largest enemy hull. Engaged ships avoid contact with side-slips instead of turning tail.<br><br>
         <b>Scenario sizes:</b> Random Skirmish and Domination can be launched as Small, Medium, Large, or Epic from the scenario size buttons. Domination creates two bases fighting over No Man's Land; the dominant team inside the zone captures it (Battlefield-style) — the capture bar fills toward whichever faction has more ships, and if the balance flips before it completes the progress rewinds at the same rate instead of resetting. Capture takes 30 seconds. A held zone must first be neutralized: a rival has to stay dominant for 5 seconds to break the hold before it can capture. Hold 3 minutes to win, or longest hold wins after 5 minutes. The zone border is grey and dotted while neutral and turns the owner's colour once captured. Domination fleets are scaled down to fit each side's half and start staged behind No Man's Land so neither team reaches it first, and Base Production is locked to fixed values (every 10s, 4 per wave, 16 active per base, x1 health, all classes) so neither side can out-produce the other.<br><br>
         <b>Controls:</b> Use Deploy, Move, Follow, Pilot, or Erase mode · Pilot uses WASD/Arrows to thrust in any direction while the mouse aims and faces the ship — so you can strafe sideways or reverse without turning (side-slip is 15% slower, reverse 30% slower) — and auto-fires the moment a foe sits under the crosshair (click a foe to lock) · right-click delete · mouse wheel zoom · middle-mouse or Shift+drag to pan · Space to pause · F or the Fleet Menu fullscreen button for full-page fullscreen · the eye button hides screen controls.<br>
-<b>Touch controls:</b> choose Deploy, Move, Pilot, or Erase · Pilot shows twin sticks after you tap one of your faction ships — the left stick thrusts in any direction — hold the right stick on a foe and the left stick lets you strafe sideways or reverse without turning (side-slip is 15% slower, reverse 30% slower) — the right stick aims and steers the crosshair, and guns fire automatically once a foe is in the crosshair (tap a foe to lock it) · two-finger drag to pan, pinch to zoom · open the ☰ Fleet Menu for all fleet options.<br>
+<b>Touch controls:</b> choose Deploy, Move, Pilot, or Erase · Pilot shows twin sticks after you tap one of your faction ships — the left stick thrusts in any direction (strafe sideways or reverse without turning — side-slip is 15% slower, reverse 30% slower); the right stick glides the sights like a trackpad — nudge them anywhere, near or far from the ship, and they coast to a smooth stop where you leave them — the ship turns to face the sights and guns fire automatically once a foe sits under them (tap a foe to lock it) · two-finger drag to pan, pinch to zoom · open the ☰ Fleet Menu for all fleet options.<br>
         Try the <b>Scenario</b> buttons for instant battles!
         <br><button id="btnStart">ENGAGE</button>
       </div>
@@ -3067,7 +3067,7 @@ function updateShip(s, dt){
 
   // targeting
   s.retarget-=dt;
-  if(piloted) updatePilotTarget(s);
+  if(piloted) updatePilotTarget(s,dt);
   else if(!bomberOrder&&(!s.target||s.target.dead||s.target.cloak||s.retarget<=0)){ s.target=findTarget(s); s.retarget=.7+Math.random()*.5; }
   if(s.mines) updateMineLayer(s,dt);
 
@@ -4048,9 +4048,7 @@ function drawPilotOverlay(now){
   ctx.strokeStyle=fc; ctx.lineWidth=Math.max(1,1.6/cam.z);
   ctx.beginPath(); ctx.arc(s.x,s.y,s.size*2.25+16/cam.z,0,TAU); ctx.stroke();
   if(pilot.aimWorld){
-    const dx=pilot.aimWorld.x-s.x, dy=pilot.aimWorld.y-s.y, d=Math.hypot(dx,dy)||1;
-    const len=Math.min(d,Math.max(90,(s.maxRng||260)*.9));
-    const ax=s.x+dx/d*len, ay=s.y+dy/d*len;
+    const ax=pilot.aimWorld.x, ay=pilot.aimWorld.y;   // free-floating trackpad reticle
     const hot=pilot.fire;                       // crosshair glows red-gold while guns are live
     ctx.globalAlpha=.38;
     ctx.strokeStyle=hot?'#ffb27f':'#7fd4ff'; ctx.lineWidth=Math.max(.9,1.3/cam.z);
@@ -4087,7 +4085,12 @@ const PILOT_MOVE_KEYS=new Set(['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowLeft'
 // A hands-on pilot out-runs and out-ranges the AI baseline, and its guns open up
 // automatically the moment the crosshair rests on a hostile.
 const PILOT_RANGE_MUL=1.6, PILOT_SPEED_MUL=1.55, PILOT_AIM_CONE=.26;
-let pilot={ship:null,fac:null,aimWorld:null,aimScreen:null,aimA:0,lockTarget:null,fire:false,manualFire:false,onTarget:false,
+// Aim stick drives the crosshair like a trackpad drives a mouse: deflection is a
+// velocity (screen px/s), eased for smoothness, that slides a free-floating
+// reticle in any direction — including toward and away from the ship.
+const AIM_CURSOR_SPEED=215, AIM_SMOOTH_TAU=.12;
+let pilot={ship:null,fac:null,aimWorld:null,aimScreen:null,aimOff:null,aimVX:0,aimVY:0,aimA:0,
+  lockTarget:null,fire:false,manualFire:false,onTarget:false,
   keys:{},stickX:0,stickY:0,stickPointer:null,aimX:0,aimY:0,aimActive:false,aimPointer:null,inputMode:'mouse'};
 function screenToWorld(mx,my){ return { x:(mx*devicePixelRatio-cw/2)/(cam.z*devicePixelRatio)+cam.x, y:(my*devicePixelRatio-ch/2)/(cam.z*devicePixelRatio)+cam.y }; }
 function shipAtScreen(mx,my){
@@ -4150,9 +4153,11 @@ function setPilotShip(s){
   if(pilot.ship&&pilot.ship!==s) removePilotBoost(pilot.ship);
   pilot.ship=s; pilot.fac=s.fac; pilot.lockTarget=null;
   pilot.fire=false; pilot.manualFire=false; pilot.onTarget=false;
-  pilot.aimX=0; pilot.aimY=0; pilot.aimActive=false;
+  pilot.aimX=0; pilot.aimY=0; pilot.aimActive=false; pilot.aimVX=0; pilot.aimVY=0;
   applyPilotBoost(s);
-  pilot.aimWorld={x:s.x+Math.cos(s.a)*(s.maxRng||260),y:s.y+Math.sin(s.a)*(s.maxRng||260)};
+  // start the trackpad reticle a little ahead of the ship
+  pilot.aimOff={x:Math.cos(s.a)*(s.maxRng||260)*.55,y:Math.sin(s.a)*(s.maxRng||260)*.55};
+  pilot.aimWorld={x:s.x+pilot.aimOff.x,y:s.y+pilot.aimOff.y};
   activeTool='pilot'; followTarget=null; followFac=null; followRingT=0;
   document.body.classList.add('piloting');
   refreshToolButton(); updatePilotHud(true);
@@ -4161,7 +4166,7 @@ function setPilotShip(s){
 }
 function resetPilotStick(){
   pilot.stickX=0; pilot.stickY=0; pilot.stickPointer=null;
-  pilot.aimX=0; pilot.aimY=0; pilot.aimActive=false; pilot.aimPointer=null;
+  pilot.aimX=0; pilot.aimY=0; pilot.aimActive=false; pilot.aimPointer=null; pilot.aimVX=0; pilot.aimVY=0;
   const knob=$('pilotStickKnob'); if(knob) knob.style.transform='translate(0,0)';
   const aimKnob=$('pilotAimKnob'); if(aimKnob) aimKnob.style.transform='translate(0,0)';
   const aim=$('pilotAim'); if(aim) aim.classList.remove('on');
@@ -4170,7 +4175,7 @@ function clearPilot(announce,keepTool){
   const had=!!pilot.ship;
   removePilotBoost(pilot.ship);
   pilot.ship=null; pilot.fac=null; pilot.lockTarget=null;
-  pilot.fire=false; pilot.manualFire=false; pilot.onTarget=false; pilot.aimWorld=null; pilot.aimScreen=null; pilot.keys={};
+  pilot.fire=false; pilot.manualFire=false; pilot.onTarget=false; pilot.aimWorld=null; pilot.aimScreen=null; pilot.aimOff=null; pilot.keys={};
   resetPilotStick();
   document.body.classList.remove('piloting');
   if(!keepTool&&activeTool==='pilot') activeTool='move';
@@ -4190,19 +4195,20 @@ function pilotInputVector(){
   if(len>1){ x/=len; y/=len; }
   return {x,y,len:Math.min(1,len)};
 }
-function pilotAiming(){ return pilot.aimActive&&Math.hypot(pilot.aimX,pilot.aimY)>.15; }
-// Where the nose points: the aim stick (touch) or the mouse crosshair (desktop)
-// owns the ship's facing so the hull can strafe; with no aim reference the nose
-// simply follows the direction of travel.
-function pilotFacing(s,moveA){
-  if(pilotAiming()) return Math.atan2(pilot.aimY,pilot.aimX);
-  if(pilot.inputMode==='mouse'&&pilot.aimWorld) return Math.atan2(pilot.aimWorld.y-s.y,pilot.aimWorld.x-s.x);
-  return moveA!==null?moveA:s.a;
+// The nose tracks the free-floating reticle, so the hull turns to face wherever
+// the sights are and can strafe/reverse underneath. A small dead-zone keeps the
+// heading steady when the reticle is pulled right onto the ship.
+function pilotFacing(s){
+  if(pilot.aimWorld){
+    const dx=pilot.aimWorld.x-s.x, dy=pilot.aimWorld.y-s.y, dead=Math.max(20,s.size*1.3);
+    if(dx*dx+dy*dy>dead*dead) return Math.atan2(dy,dx);
+  }
+  return s.a;
 }
 function pilotControlForShip(s){
   const v=pilotInputVector();
   const moveA=v.len>.05?Math.atan2(v.y,v.x):null;
-  const desired=pilotFacing(s,moveA);
+  const desired=pilotFacing(s);
   let spdF=0;
   if(moveA!==null){
     // Thrust is world-absolute, so the ship can reverse and side-slip without
@@ -4215,47 +4221,52 @@ function pilotControlForShip(s){
 }
 function pilotPickTarget(s){
   const aim=pilot.aimWorld||{x:s.x+Math.cos(s.a)*(s.maxRng||260),y:s.y+Math.sin(s.a)*(s.maxRng||260)};
-  const aimA=Math.atan2(aim.y-s.y,aim.x-s.x);
-  const radius=Math.max(280,(s.maxRng||260)*1.35);
+  const rng=(s.maxRng||260)*1.05;
   let best=null, bestScore=Infinity;
-  for(const o of queryCircle(s.x,s.y,radius)){
+  for(const o of queryCircle(s.x,s.y,Math.max(280,(s.maxRng||260)*1.35))){
     if(o.dead||o.cloak||!areHostile(o.fac,s.fac)) continue;
-    const dx=o.x-s.x, dy=o.y-s.y, d=Math.hypot(dx,dy)||1;
-    const off=Math.abs(angDiff(aimA,Math.atan2(dy,dx)));
-    const cursorD=Math.hypot(o.x-aim.x,o.y-aim.y);
-    if(off>.95&&cursorD>o.size*3+90) continue;
-    const score=off*900+cursorD*.35+d*.08-hullWeight(o.hull)*10;
-    if(score<bestScore){ bestScore=score; best=o; }
+    if(dist2(s,o)>rng*rng) continue;                       // must be reachable
+    // pick whoever sits closest to the sights (bias slightly to bigger hulls)
+    const cursorD=Math.hypot(o.x-aim.x,o.y-aim.y)-hullWeight(o.hull)*6;
+    if(cursorD<bestScore){ bestScore=cursorD; best=o; }
   }
   return best;
 }
-function refreshPilotAim(s){
-  const reach=(s.maxRng||260)*.94;
-  if(pilotAiming()){
-    pilot.aimA=Math.atan2(pilot.aimY,pilot.aimX);
-    pilot.aimWorld={x:s.x+Math.cos(pilot.aimA)*reach,y:s.y+Math.sin(pilot.aimA)*reach};
-  } else if(pilot.inputMode==='mouse'&&pilot.aimScreen){
-    // Keep the reticle pinned under the cursor as the camera tracks the ship.
+// Slide the trackpad reticle. Aim-stick deflection is a velocity (eased for
+// smoothness, quadratic near centre for precision); the reticle is stored as a
+// ship-relative offset so it stays put on screen and can be pushed to or beyond
+// the ship in any direction, clamped just past weapon range.
+function moveAimCursor(s,dt){
+  if(!pilot.aimOff) pilot.aimOff={x:Math.cos(s.a)*(s.maxRng||260)*.55,y:Math.sin(s.a)*(s.maxRng||260)*.55};
+  const mag=Math.min(1,Math.hypot(pilot.aimX,pilot.aimY));
+  const tx=pilot.aimX*mag, ty=pilot.aimY*mag;               // quadratic response curve
+  const k=dt>0?1-Math.exp(-dt/AIM_SMOOTH_TAU):1;
+  pilot.aimVX+=(tx-pilot.aimVX)*k;
+  pilot.aimVY+=(ty-pilot.aimVY)*k;
+  const step=(AIM_CURSOR_SPEED/Math.max(.05,cam.z))*dt;      // screen-consistent regardless of zoom
+  pilot.aimOff.x+=pilot.aimVX*step; pilot.aimOff.y+=pilot.aimVY*step;
+  const reach=(s.maxRng||260)*1.1, r=Math.hypot(pilot.aimOff.x,pilot.aimOff.y);
+  if(r>reach){ pilot.aimOff.x*=reach/r; pilot.aimOff.y*=reach/r; }
+}
+function refreshPilotAim(s,dt){
+  if(pilot.inputMode==='touch'){
+    moveAimCursor(s,dt||0);
+    pilot.aimWorld={x:s.x+pilot.aimOff.x,y:s.y+pilot.aimOff.y};
+  } else if(pilot.aimScreen){
+    // Desktop: keep the reticle pinned under the cursor as the camera tracks.
     pilot.aimWorld=screenToWorld(pilot.aimScreen.x,pilot.aimScreen.y);
-  } else if(pilot.inputMode==='touch'){
-    // No aim-stick input on touch → let the crosshair ride the nose so the ship
-    // still fires at whatever it is flying toward.
-    pilot.aimWorld={x:s.x+Math.cos(s.a)*reach,y:s.y+Math.sin(s.a)*reach};
   }
 }
 function crosshairOnTarget(s,t){
   if(!t||t.dead||!pilot.aimWorld) return false;
-  const aimA=Math.atan2(pilot.aimWorld.y-s.y,pilot.aimWorld.x-s.x);
-  const tA=Math.atan2(t.y-s.y,t.x-s.x);
-  const d=Math.hypot(t.x-s.x,t.y-s.y)||1;
-  if(d>(s.maxRng||260)*1.02) return false;
-  // widen the acceptance cone for close-in or bulky targets
-  const cone=PILOT_AIM_CONE+Math.atan2(t.size*1.5+16,d);
-  return Math.abs(angDiff(aimA,tA))<cone;
+  if(dist2(s,t)>((s.maxRng||260)*1.02)**2) return false;    // must be in range
+  // fire when the reticle actually overlaps the target (generous, zoom-aware)
+  const dx=t.x-pilot.aimWorld.x, dy=t.y-pilot.aimWorld.y, lockR=t.size*1.7+62/Math.max(.05,cam.z);
+  return dx*dx+dy*dy<lockR*lockR;
 }
-function updatePilotTarget(s){
+function updatePilotTarget(s,dt){
   if(!isPilotedShip(s)) return;
-  refreshPilotAim(s);
+  refreshPilotAim(s,dt);
   if(pilot.lockTarget&&!pilotTargetValid(s,pilot.lockTarget,1.6)) pilot.lockTarget=null;
   if(pilot.lockTarget) s.target=pilot.lockTarget;
   else {
