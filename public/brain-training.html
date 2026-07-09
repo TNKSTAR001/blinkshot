@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0f1226" />
+<title>Brain Trainer — Memory · Focus · Reasoning</title>
+<style>
+  :root {
+    --bg: #0f1226;
+    --bg2: #171b3a;
+    --card: #1e2348;
+    --card-2: #262c5c;
+    --text: #eef0ff;
+    --muted: #9aa1d4;
+    --accent: #7c6cff;
+    --accent-2: #4ecdc4;
+    --good: #34d399;
+    --bad: #f87171;
+    --warn: #fbbf24;
+    --radius: 18px;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: radial-gradient(1200px 800px at 50% -10%, #232a5e 0%, var(--bg) 55%);
+    color: var(--text);
+    min-height: 100dvh;
+    touch-action: manipulation;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    padding: max(12px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  }
+  .screen { display: none; flex: 1; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* ---------- Start screen ---------- */
+  #screen-start { justify-content: center; text-align: center; gap: 22px; padding-bottom: 8vh; }
+  .logo { font-size: 64px; line-height: 1; filter: drop-shadow(0 6px 18px rgba(124,108,255,.45)); }
+  h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
+  h1 span { background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tagline { color: var(--muted); font-size: 15.5px; line-height: 1.55; padding: 0 8px; }
+  .pillars { display: flex; gap: 10px; justify-content: center; }
+  .pillar {
+    flex: 1; max-width: 130px; background: var(--card); border-radius: var(--radius);
+    padding: 14px 8px; box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,.06);
+  }
+  .pillar .ico { font-size: 26px; }
+  .pillar .name { font-size: 13px; font-weight: 700; margin-top: 6px; }
+  .pillar .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .best-line { font-size: 13px; color: var(--muted); min-height: 18px; }
+  .best-line b { color: var(--warn); }
+
+  .btn-primary {
+    appearance: none; border: none; cursor: pointer; width: 100%;
+    background: linear-gradient(135deg, var(--accent) 0%, #5a8bff 100%);
+    color: #fff; font-size: 19px; font-weight: 800; letter-spacing: .3px;
+    padding: 18px; border-radius: 999px; box-shadow: 0 10px 26px rgba(90,110,255,.4);
+    transition: transform .08s ease;
+  }
+  .btn-primary:active { transform: scale(.97); }
+  .btn-ghost {
+    appearance: none; cursor: pointer; width: 100%;
+    background: transparent; color: var(--muted); border: 1.5px solid rgba(255,255,255,.18);
+    font-size: 16px; font-weight: 700; padding: 14px; border-radius: 999px;
+  }
+  .btn-ghost:active { transform: scale(.97); }
+
+  /* ---------- Quiz header ---------- */
+  .quiz-head { padding: 4px 0 10px; }
+  .head-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .q-counter { font-size: 14px; font-weight: 700; color: var(--muted); }
+  .q-counter b { color: var(--text); font-size: 16px; }
+  .head-right { display: flex; align-items: center; gap: 10px; }
+  .score-chip {
+    background: var(--card); border: 1px solid rgba(255,255,255,.08); border-radius: 999px;
+    padding: 6px 12px; font-size: 13.5px; font-weight: 800; color: var(--warn);
+  }
+  .streak-chip { font-size: 13.5px; font-weight: 800; color: var(--accent-2); }
+  .quit-btn {
+    appearance: none; border: none; background: var(--card); color: var(--muted);
+    width: 34px; height: 34px; border-radius: 50%; font-size: 16px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .progress-track { height: 8px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; }
+  .progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    border-radius: 99px; transition: width .35s ease;
+  }
+
+  /* ---------- Question area ---------- */
+  .cat-chip {
+    align-self: center; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase;
+    padding: 6px 14px; border-radius: 999px; margin: 10px 0 4px;
+  }
+  .cat-memory    { background: rgba(124,108,255,.18); color: #b3a8ff; }
+  .cat-focus     { background: rgba(78,205,196,.16);  color: #7fe6df; }
+  .cat-reasoning { background: rgba(251,191,36,.15);  color: #ffd66e; }
+
+  .q-card {
+    background: var(--card); border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px 16px; margin-top: 10px; text-align: center;
+    display: flex; flex-direction: column; gap: 14px; min-height: 170px; justify-content: center;
+  }
+  .q-prompt { font-size: 18.5px; font-weight: 700; line-height: 1.45; }
+  .q-stimulus { font-size: 34px; line-height: 1.4; letter-spacing: 4px; word-break: break-word; font-weight: 800; }
+  .q-stimulus.small { font-size: 24px; letter-spacing: 2px; }
+  .stroop-word { font-size: 52px; font-weight: 900; letter-spacing: 2px; }
+  .sym-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
+    font-size: 26px; justify-items: center; max-width: 320px; margin: 0 auto;
+  }
+  .memorize-note { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .5px; }
+  .mem-timer { height: 6px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; margin-top: 4px; }
+  .mem-timer-fill { height: 100%; width: 100%; background: linear-gradient(90deg, var(--accent-2), var(--accent)); border-radius: 99px; }
+  @keyframes shrink { from { width: 100%; } to { width: 0%; } }
+
+  /* ---------- Options ---------- */
+  .options { display: flex; flex-direction: column; gap: 12px; margin-top: 18px; padding-bottom: 8px; }
+  .opt-btn {
+    appearance: none; cursor: pointer; width: 100%;
+    background: var(--card-2); color: var(--text);
+    border: 1.5px solid rgba(255,255,255,.1); border-radius: 16px;
+    font-size: 18px; font-weight: 700; padding: 16px 14px; min-height: 58px;
+    transition: transform .07s ease, background .15s ease, border-color .15s ease;
+    word-break: break-word;
+  }
+  .opt-btn:active { transform: scale(.98); }
+  .opt-btn.correct { background: rgba(52,211,153,.2); border-color: var(--good); color: #b6f5db; }
+  .opt-btn.wrong   { background: rgba(248,113,113,.18); border-color: var(--bad); color: #ffc4c4; }
+  .opt-btn:disabled { cursor: default; opacity: .95; }
+  .opt-btn.dimmed { opacity: .45; }
+  .feedback { text-align: center; font-size: 15px; font-weight: 800; min-height: 22px; margin-top: 6px; }
+  .feedback.good { color: var(--good); }
+  .feedback.bad { color: var(--bad); }
+
+  /* ---------- Results ---------- */
+  #screen-results { justify-content: flex-start; gap: 16px; padding-top: 4vh; text-align: center; }
+  .result-emoji { font-size: 58px; }
+  .result-title { font-size: 26px; font-weight: 800; }
+  .result-score { font-size: 48px; font-weight: 900; background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .result-sub { color: var(--muted); font-size: 14.5px; margin-top: -8px; }
+  .stats-card {
+    background: var(--card); border: 1px solid rgba(255,255,255,.07); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 18px 16px; display: flex; flex-direction: column; gap: 14px;
+  }
+  .cat-row { display: flex; align-items: center; gap: 10px; }
+  .cat-row .cr-label { width: 96px; text-align: left; font-size: 13.5px; font-weight: 800; }
+  .cat-row .cr-track { flex: 1; height: 10px; background: rgba(255,255,255,.08); border-radius: 99px; overflow: hidden; }
+  .cat-row .cr-fill { height: 100%; border-radius: 99px; width: 0%; transition: width .8s ease; }
+  .cat-row .cr-num { width: 52px; text-align: right; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .mini-stats { display: flex; gap: 10px; }
+  .mini {
+    flex: 1; background: var(--card); border: 1px solid rgba(255,255,255,.07);
+    border-radius: var(--radius); padding: 12px 6px;
+  }
+  .mini .v { font-size: 20px; font-weight: 900; }
+  .mini .k { font-size: 11.5px; color: var(--muted); font-weight: 700; margin-top: 2px; }
+  .result-actions { display: flex; flex-direction: column; gap: 12px; margin-top: auto; padding-top: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ START ============ -->
+  <section class="screen active" id="screen-start">
+    <div class="logo">🧠</div>
+    <h1>Brain <span>Trainer</span></h1>
+    <p class="tagline">50 rapid-fire questions, freshly randomized every round, to sharpen your memory, focus and reasoning.</p>
+    <div class="pillars">
+      <div class="pillar"><div class="ico">🧩</div><div class="name">Memory</div><div class="sub">Recall &amp; retain</div></div>
+      <div class="pillar"><div class="ico">🎯</div><div class="name">Focus</div><div class="sub">Attention control</div></div>
+      <div class="pillar"><div class="ico">💡</div><div class="name">Reasoning</div><div class="sub">Logic &amp; patterns</div></div>
+    </div>
+    <div class="best-line" id="best-line"></div>
+    <button class="btn-primary" id="btn-start">Start Training</button>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="screen" id="screen-quiz">
+    <div class="quiz-head">
+      <div class="head-row">
+        <div class="q-counter">Q <b id="q-num">1</b> / <span id="q-total">50</span></div>
+        <div class="head-right">
+          <span class="streak-chip" id="streak-chip"></span>
+          <span class="score-chip" id="score-chip">⭐ 0</span>
+          <button class="quit-btn" id="btn-quit" aria-label="Quit">✕</button>
+        </div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    </div>
+
+    <div class="cat-chip" id="cat-chip"></div>
+
+    <div class="q-card" id="q-card">
+      <div class="memorize-note" id="memorize-note" style="display:none">👀 MEMORIZE…</div>
+      <div class="q-stimulus" id="q-stimulus" style="display:none"></div>
+      <div class="mem-timer" id="mem-timer" style="display:none"><div class="mem-timer-fill" id="mem-timer-fill"></div></div>
+      <div class="q-prompt" id="q-prompt"></div>
+    </div>
+
+    <div class="options" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section class="screen" id="screen-results">
+    <div class="result-emoji" id="result-emoji">🏆</div>
+    <div class="result-title" id="result-title">Great work!</div>
+    <div class="result-score" id="result-score">0%</div>
+    <div class="result-sub" id="result-sub"></div>
+
+    <div class="stats-card" id="cat-breakdown"></div>
+
+    <div class="mini-stats">
+      <div class="mini"><div class="v" id="stat-points">0</div><div class="k">POINTS</div></div>
+      <div class="mini"><div class="v" id="stat-streak">0</div><div class="k">BEST STREAK</div></div>
+      <div class="mini"><div class="v" id="stat-time">0:00</div><div class="k">TIME</div></div>
+    </div>
+
+    <div class="result-actions">
+      <button class="btn-primary" id="btn-again">Train Again 🔄</button>
+      <button class="btn-ghost" id="btn-home">Back to Home</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ======================= helpers ======================= */
+const $ = id => document.getElementById(id);
+const rand = n => Math.floor(Math.random() * n);
+const randInt = (lo, hi) => lo + rand(hi - lo + 1);
+const pick = arr => arr[rand(arr.length)];
+const shuffle = arr => {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = rand(i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+/* Build 4 unique options (correct + 3 distractors) and return {options, answerIndex}. */
+function makeOptions(correct, distractorFn) {
+  const set = new Set([String(correct)]);
+  let guard = 0;
+  while (set.size < 4 && guard++ < 200) set.add(String(distractorFn()));
+  // Extremely defensive fallback so we never render fewer than 4 options.
+  let filler = 0;
+  while (set.size < 4) set.add(String(correct) + " " + (++filler));
+  const options = shuffle([...set]);
+  return { options, answerIndex: options.indexOf(String(correct)) };
+}
+
+/* ======================= data pools ======================= */
+const EMOJIS = ["🍎","🚗","🌙","🐶","🎈","⚽","🌵","🎁","🦋","🍩","🚀","🐳","🎸","🧊","🌻","🍕","⛺","🐢","🎩","🔑","🪁","🍇","🐙","🧲","🥁","🦉","🍄","⛵","🧸","🌈","🐝","🍔","📚","🪐","🦜","🍒","🛼","🧃","🪴","🎳"];
+
+const STROOP_COLORS = [
+  { name: "RED",    css: "#ff6b6b" },
+  { name: "BLUE",   css: "#5a8bff" },
+  { name: "GREEN",  css: "#34d399" },
+  { name: "YELLOW", css: "#fbbf24" },
+  { name: "PURPLE", css: "#b18cff" },
+  { name: "ORANGE", css: "#ff9f43" },
+];
+
+const WORD_GROUPS = [
+  { theme: "fruits",      items: ["Apple","Banana","Mango","Grape","Peach","Cherry"] },
+  { theme: "animals",     items: ["Tiger","Rabbit","Eagle","Shark","Camel","Otter"] },
+  { theme: "vehicles",    items: ["Truck","Scooter","Train","Yacht","Tractor","Bus"] },
+  { theme: "clothing",    items: ["Jacket","Scarf","Boots","Gloves","Sweater","Cap"] },
+  { theme: "instruments", items: ["Guitar","Violin","Drums","Flute","Piano","Trumpet"] },
+  { theme: "furniture",   items: ["Sofa","Table","Wardrobe","Bench","Shelf","Stool"] },
+  { theme: "weather",     items: ["Rain","Snow","Thunder","Breeze","Fog","Hail"] },
+  { theme: "body parts",  items: ["Elbow","Ankle","Shoulder","Wrist","Knee","Chin"] },
+];
+
+const ANALOGIES = [
+  { q: "Hot is to Cold as Up is to …?",            a: "Down",    d: ["Left","Above","High"] },
+  { q: "Puppy is to Dog as Kitten is to …?",       a: "Cat",     d: ["Lion","Mouse","Cub"] },
+  { q: "Pen is to Write as Knife is to …?",        a: "Cut",     d: ["Sharpen","Cook","Hold"] },
+  { q: "Bird is to Nest as Bee is to …?",          a: "Hive",    d: ["Honey","Flower","Swarm"] },
+  { q: "Eye is to See as Ear is to …?",            a: "Hear",    d: ["Sound","Speak","Smell"] },
+  { q: "Fish is to Water as Bird is to …?",        a: "Air",     d: ["Tree","Wing","Cage"] },
+  { q: "Night is to Moon as Day is to …?",         a: "Sun",     d: ["Sky","Light","Cloud"] },
+  { q: "Shoe is to Foot as Glove is to …?",        a: "Hand",    d: ["Finger","Arm","Wrist"] },
+  { q: "Author is to Book as Painter is to …?",    a: "Painting",d: ["Brush","Canvas","Museum"] },
+  { q: "Key is to Lock as Password is to …?",      a: "Account", d: ["Keyboard","Secret","Letter"] },
+  { q: "Doctor is to Hospital as Teacher is to …?",a: "School",  d: ["Student","Lesson","Office"] },
+  { q: "Ice is to Water as Water is to …?",        a: "Steam",   d: ["Rain","Ocean","Cold"] },
+  { q: "Hungry is to Eat as Tired is to …?",       a: "Sleep",   d: ["Yawn","Run","Work"] },
+  { q: "Caterpillar is to Butterfly as Tadpole is to …?", a: "Frog", d: ["Fish","Snake","Lizard"] },
+  { q: "Book is to Chapter as Song is to …?",      a: "Verse",   d: ["Album","Note","Singer"] },
+];
+
+/* ======================= MEMORY generators ======================= */
+
+function genDigitSeq() {
+  const len = randInt(4, 6);
+  const digits = Array.from({ length: len }, () => rand(10));
+  const seq = digits.join("");
+  const spaced = digits.join(" ");
+  const distract = () => {
+    const d = digits.slice();
+    if (rand(2) === 0 && len > 1) {           // swap two neighbours
+      const i = rand(len - 1);
+      [d[i], d[i + 1]] = [d[i + 1], d[i]];
+    } else {                                   // change one digit
+      const i = rand(len);
+      d[i] = (d[i] + randInt(1, 9)) % 10;
+    }
+    return d.join(" ");
+  };
+  const { options, answerIndex } = makeOptions(spaced, distract);
+  return {
+    cat: "memory",
+    stimulus: { html: esc(seq.split("").join(" ")), cls: "", duration: 1500 + len * 700 },
+    prompt: "What was the number sequence?",
+    options, answerIndex,
+  };
+}
+
+function genEmojiPresent() {
+  const pool = shuffle(EMOJIS);
+  const shown = pool.slice(0, 5);
+  const unseen = pool.slice(5, 9);
+  const correct = pick(shown);
+  const options = shuffle([correct, ...unseen.slice(0, 3)]);
+  return {
+    cat: "memory",
+    stimulus: { html: shown.map(esc).join(" "), cls: "", duration: 3800 },
+    prompt: "Which one WAS in the group you just saw?",
+    options, answerIndex: options.indexOf(correct),
+  };
+}
+
+function genEmojiMissing() {
+  const pool = shuffle(EMOJIS);
+  const shown = pool.slice(0, 5);
+  const intruder = pool[5];
+  const options = shuffle([intruder, ...shuffle(shown).slice(0, 3)]);
+  return {
+    cat: "memory",
+    stimulus: { html: shown.map(esc).join(" "), cls: "", duration: 3800 },
+    prompt: "Which one was NOT in the group?",
+    options, answerIndex: options.indexOf(intruder),
+  };
+}
+
+function genPairAssoc() {
+  const icons = shuffle(EMOJIS).slice(0, 3);
+  const nums = shuffle([1,2,3,4,5,6,7,8,9]).slice(0, 3);
+  const pairs = icons.map((ic, i) => ({ ic, n: nums[i] }));
+  const target = pick(pairs);
+  const { options, answerIndex } = makeOptions(target.n, () => randInt(1, 9));
+  return {
+    cat: "memory",
+    stimulus: { html: pairs.map(p => `${esc(p.ic)} = ${p.n}`).join(" &nbsp; · &nbsp; "), cls: "small", duration: 4500 },
+    prompt: `Which number was paired with ${target.ic}?`,
+    options, answerIndex,
+  };
+}
+
+function genWordRecall() {
+  const g = pick(WORD_GROUPS);
+  const others = pick(WORD_GROUPS.filter(x => x !== g));
+  const shown = shuffle(g.items).slice(0, 4);
+  const intruder = pick(others.items);
+  const options = shuffle([intruder, ...shuffle(shown).slice(0, 3)]);
+  return {
+    cat: "memory",
+    stimulus: { html: shown.map(esc).join(" · "), cls: "small", duration: 4200 },
+    prompt: "Which word was NOT on the list?",
+    options, answerIndex: options.indexOf(intruder),
+  };
+}
+
+/* ======================= FOCUS generators ======================= */
+
+function genStroopColor() {
+  const word = pick(STROOP_COLORS);
+  const ink = pick(STROOP_COLORS.filter(c => c.name !== word.name));
+  const { options, answerIndex } = makeOptions(ink.name, () => pick(STROOP_COLORS).name);
+  return {
+    cat: "focus",
+    inline: { html: `<span class="stroop-word" style="color:${ink.css}">${word.name}</span>` },
+    prompt: "What COLOR is the text? (ignore the word)",
+    options, answerIndex,
+  };
+}
+
+function genStroopWord() {
+  const word = pick(STROOP_COLORS);
+  const ink = pick(STROOP_COLORS.filter(c => c.name !== word.name));
+  const { options, answerIndex } = makeOptions(word.name, () => pick(STROOP_COLORS).name);
+  return {
+    cat: "focus",
+    inline: { html: `<span class="stroop-word" style="color:${ink.css}">${word.name}</span>` },
+    prompt: "What does the WORD say? (ignore the color)",
+    options, answerIndex,
+  };
+}
+
+function genCountSymbols() {
+  const pool = shuffle(EMOJIS).slice(0, 4);
+  const target = pool[0];
+  const count = randInt(4, 8);
+  const cells = Array(count).fill(target);
+  while (cells.length < 24) cells.push(pick(pool.slice(1)));
+  const grid = shuffle(cells);
+  const { options, answerIndex } = makeOptions(count, () => Math.max(1, count + randInt(-3, 3)));
+  return {
+    cat: "focus",
+    inline: { html: `<div class="sym-grid">${grid.map(g => `<span>${esc(g)}</span>`).join("")}</div>` },
+    prompt: `How many ${target} are in the grid?`,
+    options, answerIndex,
+  };
+}
+
+function genFindUnique() {
+  const pool = shuffle(EMOJIS).slice(0, 4);
+  const unique = pool[0];
+  const cells = [unique];
+  const fillers = pool.slice(1);
+  while (cells.length < 18) cells.push(pick(fillers));
+  // Ensure each filler appears at least twice so only `unique` appears once.
+  fillers.forEach(f => { cells.push(f, f); });
+  const grid = shuffle(cells).slice(0, 24);
+  if (!grid.includes(unique)) grid[rand(grid.length)] = unique;
+  const options = shuffle(pool.slice());
+  return {
+    cat: "focus",
+    inline: { html: `<div class="sym-grid">${grid.map(g => `<span>${esc(g)}</span>`).join("")}</div>` },
+    prompt: "Which symbol appears EXACTLY once?",
+    options, answerIndex: options.indexOf(unique),
+  };
+}
+
+function genOddLetter() {
+  const pairs = [["O","Q"],["6","9"],["E","F"],["M","W"],["b","d"],["S","5"],["I","l"],["Z","2"],["C","G"],["u","v"]];
+  const [main, odd] = shuffle(pick(pairs));
+  const size = 24;
+  const idx = rand(size);
+  const cells = Array.from({ length: size }, (_, i) => (i === idx ? odd : main));
+  const rowLen = 6;
+  const row = Math.floor(idx / rowLen) + 1;
+  const correct = `Row ${row}`;
+  const { options, answerIndex } = makeOptions(correct, () => `Row ${randInt(1, size / rowLen)}`);
+  return {
+    cat: "focus",
+    inline: { html: `<div class="sym-grid" style="font-size:22px;font-weight:800">${cells.map(c => `<span>${esc(c)}</span>`).join("")}</div>` },
+    prompt: `One "${odd}" is hiding among the "${main}"s. Which row is it in?`,
+    options, answerIndex,
+  };
+}
+
+/* ======================= REASONING generators ======================= */
+
+function genNumberSeries() {
+  const type = rand(5);
+  let terms = [], next = 0, hint = "";
+  if (type === 0) {                       // arithmetic
+    const start = randInt(1, 20), step = randInt(2, 9);
+    terms = [0,1,2,3].map(i => start + i * step);
+    next = start + 4 * step;
+  } else if (type === 1) {                // doubling
+    const start = randInt(2, 6);
+    terms = [start, start*2, start*4, start*8];
+    next = start * 16;
+  } else if (type === 2) {                // growing step (+2, +3, +4…)
+    const start = randInt(1, 10);
+    let s = randInt(2, 4), t = start;
+    terms = [t];
+    for (let i = 0; i < 3; i++) { t += s; terms.push(t); s++; }
+    next = t + s;
+  } else if (type === 3) {                // squares
+    const off = randInt(1, 4);
+    terms = [0,1,2,3].map(i => (i + off) * (i + off));
+    next = (4 + off) * (4 + off);
+  } else {                                // descending arithmetic
+    const step = randInt(3, 9), start = randInt(50, 90);
+    terms = [0,1,2,3].map(i => start - i * step);
+    next = start - 4 * step;
+  }
+  const spread = Math.max(2, Math.round(Math.abs(next) * 0.15));
+  const { options, answerIndex } = makeOptions(next, () => {
+    let d = 0;
+    while (d === 0) d = randInt(-spread, spread);
+    return next + d;
+  });
+  return {
+    cat: "reasoning",
+    inline: { html: `<span class="q-stimulus small" style="display:block">${terms.join(", ")}, <b style="color:var(--accent-2)">?</b></span>${hint}` },
+    prompt: "What number comes next?",
+    options, answerIndex,
+  };
+}
+
+function genLetterSeries() {
+  const step = randInt(1, 3);
+  const start = randInt(0, 25 - step * 4);
+  const A = 65;
+  const letters = [0,1,2,3].map(i => String.fromCharCode(A + start + i * step));
+  const next = String.fromCharCode(A + start + 4 * step);
+  const { options, answerIndex } = makeOptions(next, () =>
+    String.fromCharCode(A + Math.min(25, Math.max(0, start + 4 * step + randInt(-3, 3))))
+  );
+  return {
+    cat: "reasoning",
+    inline: { html: `<span class="q-stimulus" style="display:block">${letters.join(" · ")} · <b style="color:var(--accent-2)">?</b></span>` },
+    prompt: "Which letter comes next?",
+    options, answerIndex,
+  };
+}
+
+function genOddWordOut() {
+  const g = pick(WORD_GROUPS);
+  const other = pick(WORD_GROUPS.filter(x => x !== g));
+  const same = shuffle(g.items).slice(0, 3);
+  const odd = pick(other.items);
+  const options = shuffle([odd, ...same]);
+  return {
+    cat: "reasoning",
+    prompt: "Which word does NOT belong with the others?",
+    options, answerIndex: options.indexOf(odd),
+  };
+}
+
+function genAnalogy() {
+  const a = pick(ANALOGIES);
+  const options = shuffle([a.a, ...a.d]);
+  return {
+    cat: "reasoning",
+    prompt: a.q,
+    options, answerIndex: options.indexOf(a.a),
+  };
+}
+
+function genMentalMath() {
+  const type = rand(4);
+  let prompt = "", answer = 0;
+  if (type === 0) {
+    const price = randInt(12, 68), pay = Math.ceil(price / 10) * 10 + pick([0, 10, 20]);
+    answer = pay - price;
+    prompt = `A snack costs $${price}. You pay with $${pay}. How much change do you get?`;
+  } else if (type === 1) {
+    const have = randInt(8, 20), lose = randInt(2, 6), gain = randInt(3, 9);
+    answer = have - lose + gain;
+    prompt = `You have ${have} apples, give away ${lose}, then pick ${gain} more. How many now?`;
+  } else if (type === 2) {
+    const x = randInt(3, 12), y = randInt(2, 9);
+    answer = x * 2 + y;
+    prompt = `Double ${x}, then add ${y}. What do you get?`;
+  } else {
+    const kids = randInt(3, 6), each = randInt(3, 8);
+    answer = kids * each;
+    prompt = `${kids} friends each collect ${each} shells. How many shells in total?`;
+  }
+  const { options, answerIndex } = makeOptions(answer, () => {
+    let d = 0;
+    while (d === 0) d = randInt(-4, 4);
+    return Math.max(0, answer + d);
+  });
+  return { cat: "reasoning", prompt, options, answerIndex };
+}
+
+function genComparison() {
+  // Build four simple expressions with distinct values and ask for the largest.
+  const exprs = [];
+  const mk = () => {
+    const x = randInt(4, 12), y = randInt(2, 9);
+    const kind = rand(3);
+    if (kind === 0) return { t: `${x} + ${y}`, v: x + y };
+    if (kind === 1) return { t: `${x + y} − ${y}`, v: x };
+    return { t: `${x} × 2`, v: x * 2 };
+  };
+  const seen = new Set();
+  while (exprs.length < 4) {
+    const e = mk();
+    if (!seen.has(e.v) && !seen.has(e.t)) { seen.add(e.v); seen.add(e.t); exprs.push(e); }
+  }
+  const maxV = Math.max(...exprs.map(e => e.v));
+  const correct = exprs.find(e => e.v === maxV);
+  const options = shuffle(exprs.map(e => e.t));
+  return {
+    cat: "reasoning",
+    prompt: "Which of these has the LARGEST value?",
+    options, answerIndex: options.indexOf(correct.t),
+  };
+}
+
+/* ======================= quiz assembly ======================= */
+
+const GENERATORS = {
+  memory:    [genDigitSeq, genEmojiPresent, genEmojiMissing, genPairAssoc, genWordRecall],
+  focus:     [genStroopColor, genStroopWord, genCountSymbols, genFindUnique, genOddLetter],
+  reasoning: [genNumberSeries, genLetterSeries, genOddWordOut, genAnalogy, genMentalMath, genComparison],
+};
+
+const TOTAL = 50;
+const CAT_META = {
+  memory:    { label: "🧩 Memory",    cls: "cat-memory",    color: "#7c6cff" },
+  focus:     { label: "🎯 Focus",     cls: "cat-focus",     color: "#4ecdc4" },
+  reasoning: { label: "💡 Reasoning", cls: "cat-reasoning", color: "#fbbf24" },
+};
+
+function buildQuiz() {
+  const plan = shuffle([
+    ...Array(17).fill("memory"),
+    ...Array(17).fill("focus"),
+    ...Array(16).fill("reasoning"),
+  ]);
+  return plan.map(cat => pick(GENERATORS[cat])());
+}
+
+/* ======================= state & flow ======================= */
+
+let quiz = [], idx = 0, points = 0, streak = 0, bestStreak = 0, startTime = 0;
+let correctByCat = { memory: 0, focus: 0, reasoning: 0 };
+let totalByCat = { memory: 0, focus: 0, reasoning: 0 };
+let memTimeout = null, locked = false;
+
+const screens = { start: $("screen-start"), quiz: $("screen-quiz"), results: $("screen-results") };
+function show(name) {
+  Object.values(screens).forEach(s => s.classList.remove("active"));
+  screens[name].classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+function startGame() {
+  quiz = buildQuiz();
+  idx = 0; points = 0; streak = 0; bestStreak = 0;
+  correctByCat = { memory: 0, focus: 0, reasoning: 0 };
+  totalByCat = { memory: 0, focus: 0, reasoning: 0 };
+  quiz.forEach(q => totalByCat[q.cat]++);
+  startTime = Date.now();
+  $("q-total").textContent = TOTAL;
+  updateHeader();
+  show("quiz");
+  renderQuestion();
+}
+
+function updateHeader() {
+  $("q-num").textContent = Math.min(idx + 1, TOTAL);
+  $("score-chip").textContent = "⭐ " + points;
+  $("streak-chip").textContent = streak >= 3 ? "🔥" + streak : "";
+  $("progress-fill").style.width = (idx / TOTAL) * 100 + "%";
+}
+
+function renderQuestion() {
+  clearTimeout(memTimeout);
+  locked = false;
+  const q = quiz[idx];
+  const meta = CAT_META[q.cat];
+
+  $("cat-chip").className = "cat-chip " + meta.cls;
+  $("cat-chip").textContent = meta.label;
+  $("feedback").textContent = "";
+  $("feedback").className = "feedback";
+  $("options").innerHTML = "";
+
+  const stim = $("q-stimulus"), note = $("memorize-note"), timer = $("mem-timer"), fill = $("mem-timer-fill");
+  stim.style.display = note.style.display = timer.style.display = "none";
+  $("q-prompt").innerHTML = "";
+
+  if (q.stimulus) {
+    // Two-phase memory question: show stimulus, then reveal prompt + options.
+    note.style.display = "block";
+    stim.style.display = "block";
+    stim.className = "q-stimulus " + (q.stimulus.cls || "");
+    stim.innerHTML = q.stimulus.html;
+    timer.style.display = "block";
+    fill.style.animation = "none";
+    void fill.offsetWidth; /* restart animation */
+    fill.style.animation = `shrink ${q.stimulus.duration}ms linear forwards`;
+    memTimeout = setTimeout(() => {
+      note.style.display = stim.style.display = timer.style.display = "none";
+      showPromptAndOptions(q);
+    }, q.stimulus.duration);
+  } else {
+    showPromptAndOptions(q);
+  }
+  updateHeader();
+}
+
+function showPromptAndOptions(q) {
+  let html = "";
+  if (q.inline) html += `<div style="margin-bottom:6px">${q.inline.html}</div>`;
+  html += esc(q.prompt);
+  $("q-prompt").innerHTML = html;
+
+  const wrap = $("options");
+  q.options.forEach((opt, i) => {
+    const b = document.createElement("button");
+    b.className = "opt-btn";
+    b.type = "button";
+    b.textContent = opt;
+    b.addEventListener("click", () => answer(i, b));
+    wrap.appendChild(b);
+  });
+}
+
+function answer(i, btn) {
+  if (locked) return;
+  locked = true;
+  const q = quiz[idx];
+  const buttons = [...document.querySelectorAll(".opt-btn")];
+  buttons.forEach(b => (b.disabled = true));
+  const correct = i === q.answerIndex;
+
+  buttons[q.answerIndex].classList.add("correct");
+  buttons.forEach((b, j) => { if (j !== q.answerIndex && j !== i) b.classList.add("dimmed"); });
+
+  const fb = $("feedback");
+  if (correct) {
+    btn.classList.add("correct");
+    streak++;
+    bestStreak = Math.max(bestStreak, streak);
+    const bonus = Math.min(streak, 5);
+    points += 10 + bonus;
+    correctByCat[q.cat]++;
+    fb.textContent = streak >= 3 ? `✅ Correct! 🔥 ${streak} in a row (+${10 + bonus})` : `✅ Correct! (+${10 + bonus})`;
+    fb.classList.add("good");
+    if (navigator.vibrate) navigator.vibrate(15);
+  } else {
+    btn.classList.add("wrong");
+    streak = 0;
+    fb.textContent = "❌ Not quite — the highlighted answer was right.";
+    fb.classList.add("bad");
+    if (navigator.vibrate) navigator.vibrate([40, 40, 40]);
+  }
+  updateHeader();
+
+  setTimeout(() => {
+    idx++;
+    if (idx >= quiz.length) finish();
+    else renderQuestion();
+  }, correct ? 850 : 1500);
+}
+
+function finish() {
+  const totalCorrect = correctByCat.memory + correctByCat.focus + correctByCat.reasoning;
+  const pct = Math.round((totalCorrect / TOTAL) * 100);
+  const secs = Math.round((Date.now() - startTime) / 1000);
+  $("progress-fill").style.width = "100%";
+
+  let emoji = "🌱", title = "Good start!";
+  if (pct >= 90)      { emoji = "🏆"; title = "Outstanding!"; }
+  else if (pct >= 75) { emoji = "🎉"; title = "Sharp mind!"; }
+  else if (pct >= 55) { emoji = "💪"; title = "Solid effort!"; }
+  else if (pct >= 35) { emoji = "🌟"; title = "Keep training!"; }
+
+  $("result-emoji").textContent = emoji;
+  $("result-title").textContent = title;
+  $("result-score").textContent = pct + "%";
+  $("result-sub").textContent = `${totalCorrect} of ${TOTAL} correct`;
+  $("stat-points").textContent = points;
+  $("stat-streak").textContent = bestStreak;
+  $("stat-time").textContent = Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
+
+  const box = $("cat-breakdown");
+  box.innerHTML = "";
+  ["memory", "focus", "reasoning"].forEach(cat => {
+    const meta = CAT_META[cat];
+    const c = correctByCat[cat], t = totalByCat[cat];
+    const p = t ? Math.round((c / t) * 100) : 0;
+    const row = document.createElement("div");
+    row.className = "cat-row";
+    row.innerHTML =
+      `<div class="cr-label">${meta.label}</div>` +
+      `<div class="cr-track"><div class="cr-fill" style="background:${meta.color}"></div></div>` +
+      `<div class="cr-num">${c}/${t}</div>`;
+    box.appendChild(row);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      row.querySelector(".cr-fill").style.width = p + "%";
+    }));
+  });
+
+  try {
+    const best = Number(localStorage.getItem("bt-best") || 0);
+    if (points > best) localStorage.setItem("bt-best", String(points));
+    localStorage.setItem("bt-last", String(pct));
+  } catch (e) { /* storage may be unavailable */ }
+
+  show("results");
+}
+
+function refreshBestLine() {
+  let txt = "";
+  try {
+    const best = Number(localStorage.getItem("bt-best") || 0);
+    const last = localStorage.getItem("bt-last");
+    if (best > 0) txt = `Best score: <b>⭐ ${best}</b>` + (last !== null ? ` · Last round: ${last}%` : "");
+  } catch (e) { /* ignore */ }
+  $("best-line").innerHTML = txt;
+}
+
+/* ======================= wiring ======================= */
+$("btn-start").addEventListener("click", startGame);
+$("btn-again").addEventListener("click", startGame);
+$("btn-home").addEventListener("click", () => { refreshBestLine(); show("start"); });
+$("btn-quit").addEventListener("click", () => {
+  clearTimeout(memTimeout);
+  refreshBestLine();
+  show("start");
+});
+refreshBestLine();
+})();
+</script>
+</body>
+</html>
