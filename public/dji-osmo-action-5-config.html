@@ -1,0 +1,467 @@
+<title>DJI Osmo Action 5 File Config</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#EEF1F7;
+    --panel:#FFFFFF;
+    --panel-2:#E3E8F2;
+    --ink:#171C2C;
+    --muted:#5A6178;
+    --line:#C9D0E0;
+    --accent:#0E8F7B;
+    --accent-ink:#FFFFFF;
+    --gold:#8A6410;
+    --gold-bg:#F6ECD2;
+    --danger:#B4372E;
+    --stars:none;
+    --mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    color-scheme:light dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0A0D18;
+      --panel:#131829;
+      --panel-2:#1C2338;
+      --ink:#E8ECF6;
+      --muted:#8B93AD;
+      --line:#2A3350;
+      --accent:#5CE0C6;
+      --accent-ink:#06231D;
+      --gold:#F0C05A;
+      --gold-bg:#2A2410;
+      --danger:#FF7A6E;
+      --stars:radial-gradient(1px 1px at 18% 22%, rgba(232,236,246,.55) 50%, transparent 51%),
+              radial-gradient(1px 1px at 72% 12%, rgba(232,236,246,.4) 50%, transparent 51%),
+              radial-gradient(1.5px 1.5px at 88% 58%, rgba(92,224,198,.45) 50%, transparent 51%),
+              radial-gradient(1px 1px at 34% 78%, rgba(232,236,246,.35) 50%, transparent 51%),
+              radial-gradient(1px 1px at 58% 44%, rgba(240,192,90,.4) 50%, transparent 51%),
+              radial-gradient(1.5px 1.5px at 8% 62%, rgba(232,236,246,.3) 50%, transparent 51%);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0A0D18; --panel:#131829; --panel-2:#1C2338; --ink:#E8ECF6; --muted:#8B93AD;
+    --line:#2A3350; --accent:#5CE0C6; --accent-ink:#06231D; --gold:#F0C05A; --gold-bg:#2A2410;
+    --danger:#FF7A6E; color-scheme:dark;
+    --stars:radial-gradient(1px 1px at 18% 22%, rgba(232,236,246,.55) 50%, transparent 51%),
+            radial-gradient(1px 1px at 72% 12%, rgba(232,236,246,.4) 50%, transparent 51%),
+            radial-gradient(1.5px 1.5px at 88% 58%, rgba(92,224,198,.45) 50%, transparent 51%),
+            radial-gradient(1px 1px at 34% 78%, rgba(232,236,246,.35) 50%, transparent 51%),
+            radial-gradient(1px 1px at 58% 44%, rgba(240,192,90,.4) 50%, transparent 51%),
+            radial-gradient(1.5px 1.5px at 8% 62%, rgba(232,236,246,.3) 50%, transparent 51%);
+  }
+  :root[data-theme="light"]{
+    --bg:#EEF1F7; --panel:#FFFFFF; --panel-2:#E3E8F2; --ink:#171C2C; --muted:#5A6178;
+    --line:#C9D0E0; --accent:#0E8F7B; --accent-ink:#FFFFFF; --gold:#8A6410; --gold-bg:#F6ECD2;
+    --danger:#B4372E; --stars:none; color-scheme:light;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg);
+    background-image:var(--stars);
+    color:var(--ink);
+    font-family:var(--sans);
+    min-height:100dvh;
+    display:flex;
+    justify-content:center;
+    padding:1.25rem 1rem 3rem;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .console{width:100%;max-width:26rem;display:flex;flex-direction:column;gap:1rem}
+
+  header{padding:.5rem .25rem 0}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:.7rem;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--accent);
+    margin:0 0 .35rem;
+  }
+  h1{
+    font-family:var(--mono);
+    font-size:1.35rem;
+    margin:0;
+    letter-spacing:.02em;
+    text-wrap:balance;
+  }
+  .sub{color:var(--muted);font-size:.85rem;margin:.4rem 0 0;line-height:1.5}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:.6rem;
+    padding:1rem;
+    display:flex;
+    flex-direction:column;
+    gap:1rem;
+  }
+
+  .label{
+    font-family:var(--mono);
+    font-size:.68rem;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--muted);
+    margin:0 0 .5rem;
+  }
+
+  /* intake */
+  .intake-btn{
+    display:flex;align-items:center;justify-content:center;gap:.6rem;
+    width:100%;min-height:3.25rem;
+    border:1.5px dashed var(--line);
+    border-radius:.5rem;
+    background:var(--panel-2);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:.85rem;
+    cursor:pointer;
+  }
+  .intake-btn:active{transform:scale(.99)}
+  .intake-btn:focus-visible,.seg button:focus-visible,.engage:focus-visible,.dl:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px;
+  }
+  input[type=file]{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
+  .status{
+    display:none;
+    align-items:center;gap:.5rem;
+    font-family:var(--mono);font-size:.78rem;
+    color:var(--gold);
+    background:var(--gold-bg);
+    border-radius:.4rem;
+    padding:.55rem .7rem;
+  }
+  .status.on{display:flex}
+  .status .dot{width:.5rem;height:.5rem;border-radius:50%;background:var(--gold);flex:none}
+
+  /* segmented controls */
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
+  .seg button{
+    min-height:3rem;
+    border:1px solid var(--line);
+    border-radius:.5rem;
+    background:var(--panel-2);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:.85rem;
+    cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.15rem;
+  }
+  .seg button.wide{grid-column:1 / -1}
+  .seg button small{font-size:.65rem;color:var(--muted);font-family:var(--sans)}
+  .seg button[aria-pressed="true"]{
+    background:var(--accent);
+    border-color:var(--accent);
+    color:var(--accent-ink);
+  }
+  .seg button[aria-pressed="true"] small{color:var(--accent-ink);opacity:.75}
+
+  /* naming fields */
+  .fields{display:none;flex-direction:column;gap:.6rem;margin-top:.6rem}
+  .fields.on{display:flex}
+  .field{display:flex;flex-direction:column;gap:.3rem}
+  .field span{font-size:.72rem;color:var(--muted)}
+  .field input{
+    min-height:2.75rem;width:100%;
+    border:1px solid var(--line);
+    border-radius:.5rem;
+    background:var(--panel-2);
+    color:var(--ink);
+    font-family:var(--mono);
+    font-size:.85rem;
+    padding:0 .7rem;
+  }
+  .field input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .seq-field{margin-top:.6rem}
+  .preview{
+    font-family:var(--mono);font-size:.8rem;
+    color:var(--ink);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:.4rem;
+    padding:.55rem .7rem;
+    margin:.6rem 0 0;
+    overflow-x:auto;white-space:nowrap;
+    font-variant-numeric:tabular-nums;
+  }
+  .preview b{color:var(--accent)}
+
+  .engage{
+    min-height:3.25rem;
+    border:none;border-radius:.5rem;
+    background:var(--accent);color:var(--accent-ink);
+    font-family:var(--mono);font-size:.95rem;letter-spacing:.08em;text-transform:uppercase;
+    cursor:pointer;
+  }
+  .engage:disabled{opacity:.45;cursor:not-allowed}
+  .engage:not(:disabled):active{transform:scale(.99)}
+
+  .result{display:none;flex-direction:column;gap:.6rem}
+  .result.on{display:flex}
+  .readout{
+    font-family:var(--mono);font-size:.78rem;color:var(--muted);
+    line-height:1.6;margin:0;
+    font-variant-numeric:tabular-nums;
+    overflow-x:auto;
+  }
+  .readout b{color:var(--ink);font-weight:600}
+  .dl{
+    display:flex;align-items:center;justify-content:center;
+    min-height:3rem;
+    border:1px solid var(--accent);
+    border-radius:.5rem;
+    color:var(--accent);
+    background:transparent;
+    font-family:var(--mono);font-size:.85rem;
+    text-decoration:none;
+  }
+  .err{display:none;color:var(--danger);font-size:.82rem;margin:0}
+  .err.on{display:block}
+
+  footer{color:var(--muted);font-size:.72rem;text-align:center;line-height:1.5}
+  @media (prefers-reduced-motion: no-preference){
+    .status.on{animation:pop .18s ease-out}
+    @keyframes pop{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+  }
+</style>
+
+<div class="console">
+  <header>
+    <p class="eyebrow">Action Cam Refit Bay</p>
+    <h1>DJI Osmo Action 5 · File Config</h1>
+    <p class="sub">Load an image and refit it to a DJI Osmo Action 5 output spec — exact camera resolution, JPEG encoding, and DJI file naming with optional date &amp; time stamp. Nothing is uploaded — all work happens on this device.</p>
+  </header>
+
+  <section class="panel">
+    <div>
+      <p class="label">01 · Cargo intake</p>
+      <label class="intake-btn" for="file">⊕ Load image</label>
+      <input type="file" id="file" accept="image/*">
+      <p class="status" id="status" role="status"><span class="dot"></span><span id="statusText"></span></p>
+    </div>
+
+    <div>
+      <p class="label">02 · Osmo Action 5 output spec</p>
+      <div class="seg" id="specSeg" role="group" aria-label="Output specification">
+        <button type="button" class="wide" data-w="7296" data-h="5472" data-name="40MP Photo" aria-pressed="true">40 MP Photo<small>7296 × 5472 · 4:3 sensor</small></button>
+        <button type="button" data-w="3840" data-h="2160" data-name="4K 16:9" aria-pressed="false">4K 16:9<small>3840 × 2160</small></button>
+        <button type="button" data-w="3840" data-h="2880" data-name="4K 4:3" aria-pressed="false">4K 4:3<small>3840 × 2880</small></button>
+        <button type="button" data-w="2688" data-h="1512" data-name="2.7K" aria-pressed="false">2.7K<small>2688 × 1512</small></button>
+        <button type="button" data-w="1920" data-h="1080" data-name="1080p" aria-pressed="false">1080p<small>1920 × 1080</small></button>
+      </div>
+    </div>
+
+    <div>
+      <p class="label">03 · Refit mode</p>
+      <div class="seg" role="group" aria-label="Resize mode">
+        <button type="button" id="mCrop" aria-pressed="true">Crop<small>fill frame, trim edges</small></button>
+        <button type="button" id="mFit" aria-pressed="false">Letterbox<small>keep all, add bars</small></button>
+      </div>
+    </div>
+
+    <div>
+      <p class="label">04 · File naming</p>
+      <div class="seg" role="group" aria-label="Naming convention">
+        <button type="button" id="nDate" aria-pressed="true">Date + time<small>DJI_20260709143000_0001_D</small></button>
+        <button type="button" id="nSeq" aria-pressed="false">Sequence only<small>DJI_0001</small></button>
+      </div>
+      <div class="fields on" id="dtFields">
+        <label class="field">
+          <span>Capture date &amp; time (defaults to the loaded file's timestamp)</span>
+          <input type="datetime-local" id="dt" step="1">
+        </label>
+      </div>
+      <label class="field seq-field">
+        <span>Sequence number (0001–9999)</span>
+        <input type="number" id="seq" min="1" max="9999" step="1" value="1" inputmode="numeric">
+      </label>
+      <p class="preview" id="preview"></p>
+    </div>
+
+    <button class="engage" id="engage" disabled>Engage refit</button>
+    <p class="err" id="err"></p>
+
+    <div class="result" id="result">
+      <p class="readout" id="readout"></p>
+      <a class="dl" id="dl" download>⭳ Download reformatted image</a>
+    </div>
+  </section>
+
+  <footer>Portrait images are refitted vertically (dimensions swapped) — the Action 5 shoots vertical too.<br>Output is always JPEG with a <span style="font-family:var(--mono)">.JPG</span> extension, matching the camera. No previews. No uploads.</footer>
+</div>
+
+<script>
+(function(){
+  var file = null, lastURL = null;
+  var spec = { w:7296, h:5472, name:"40MP Photo" };
+  var mode = "crop";
+  var nameMode = "datetime";
+
+  var $ = function(id){ return document.getElementById(id); };
+  var fileInput = $("file"), engage = $("engage"), err = $("err");
+  var dtInput = $("dt"), seqInput = $("seq");
+
+  function setSeg(onBtn, offBtn){
+    onBtn.setAttribute("aria-pressed","true");
+    offBtn.setAttribute("aria-pressed","false");
+  }
+
+  var specBtns = $("specSeg").querySelectorAll("button");
+  specBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      specBtns.forEach(function(b){ b.setAttribute("aria-pressed", b===btn ? "true" : "false"); });
+      spec = { w:+btn.dataset.w, h:+btn.dataset.h, name:btn.dataset.name };
+    });
+  });
+
+  $("mCrop").addEventListener("click", function(){ mode="crop"; setSeg($("mCrop"),$("mFit")); });
+  $("mFit").addEventListener("click", function(){ mode="fit"; setSeg($("mFit"),$("mCrop")); });
+  $("nDate").addEventListener("click", function(){
+    nameMode="datetime"; setSeg($("nDate"),$("nSeq"));
+    $("dtFields").className = "fields on";
+    updatePreview();
+  });
+  $("nSeq").addEventListener("click", function(){
+    nameMode="seq"; setSeg($("nSeq"),$("nDate"));
+    $("dtFields").className = "fields";
+    updatePreview();
+  });
+  dtInput.addEventListener("input", updatePreview);
+  seqInput.addEventListener("input", updatePreview);
+
+  function pad(n, len){ return String(n).padStart(len || 2, "0"); }
+
+  // Date -> value usable by <input type="datetime-local" step=1> (local time, with seconds)
+  function toLocalInputValue(d){
+    return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) +
+           "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  }
+
+  // DJI timestamp block: YYYYMMDDHHMMSS from the datetime-local value (falls back to now)
+  function stamp(){
+    var v = dtInput.value;                       // "YYYY-MM-DDTHH:MM" or "...:SS"
+    if (!v) return toLocalInputValue(new Date()).replace(/\D/g, "");
+    var digits = v.replace(/\D/g, "");
+    while (digits.length < 14) digits += "0";    // pad missing seconds
+    return digits.slice(0, 14);
+  }
+
+  function seq4(){
+    var n = parseInt(seqInput.value, 10);
+    if (!isFinite(n)) n = 1;
+    n = Math.min(9999, Math.max(1, n));
+    return pad(n, 4);
+  }
+
+  // DJI Osmo naming: DJI_YYYYMMDDHHMMSS_0001_D.JPG, or legacy DJI_0001.JPG without the stamp
+  function buildName(){
+    return nameMode === "datetime"
+      ? "DJI_" + stamp() + "_" + seq4() + "_D"
+      : "DJI_" + seq4();
+  }
+
+  function updatePreview(){
+    $("preview").innerHTML = "Output name · <b>" + buildName() + ".JPG</b>";
+  }
+
+  fileInput.addEventListener("change", function(){
+    err.className = "err";
+    $("result").className = "result";
+    file = fileInput.files[0] || null;
+    if (file && !/^image\//.test(file.type)) { file = null; showErr("That file is not an image. Choose a photo or picture file."); }
+    var s = $("status");
+    if (file){
+      $("statusText").textContent = "Cargo secured · 1 image loaded (" + Math.max(1, Math.round(file.size/1024)) + " KB)";
+      s.className = "status on";
+      dtInput.value = toLocalInputValue(new Date(file.lastModified || Date.now()));
+    } else {
+      s.className = "status";
+    }
+    engage.disabled = !file;
+    updatePreview();
+  });
+
+  function showErr(msg){ err.textContent = msg; err.className = "err on"; }
+
+  engage.addEventListener("click", function(){
+    if (!file) return;
+    err.className = "err";
+    engage.disabled = true;
+    engage.textContent = "Refitting…";
+
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      URL.revokeObjectURL(url);
+      try { render(img); }
+      catch(e){ showErr("Refit failed: " + e.message); }
+      resetBtn();
+    };
+    img.onerror = function(){
+      URL.revokeObjectURL(url);
+      showErr("Could not read that image. Try a different file (JPEG, PNG, or WebP work best).");
+      resetBtn();
+    };
+    img.src = url;
+  });
+
+  function resetBtn(){
+    engage.textContent = "Engage refit";
+    engage.disabled = !file;
+  }
+
+  function render(img){
+    var sw = img.naturalWidth, sh = img.naturalHeight;
+    if (!sw || !sh) throw new Error("image has no pixels");
+
+    // Portrait sources get the vertical variant of the spec (dimensions swapped).
+    var vertical = sh > sw;
+    var tw = vertical ? spec.h : spec.w;
+    var th = vertical ? spec.w : spec.h;
+    var r = tw / th;
+
+    var canvas = document.createElement("canvas");
+    canvas.width = tw; canvas.height = th;
+    var ctx = canvas.getContext("2d");
+    ctx.imageSmoothingQuality = "high";
+
+    if (mode === "crop"){
+      // center-crop source region matching target ratio, then scale to exact spec size
+      var sx, sy, cw, ch;
+      if (sw/sh > r){ ch = sh; cw = Math.round(sh*r); sx = Math.round((sw-cw)/2); sy = 0; }
+      else { cw = sw; ch = Math.round(sw/r); sx = 0; sy = Math.round((sh-ch)/2); }
+      ctx.drawImage(img, sx, sy, cw, ch, 0, 0, tw, th);
+    } else {
+      // letterbox: scale whole source to fit inside the exact spec frame
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, tw, th);
+      var scale = Math.min(tw/sw, th/sh);
+      var dw = Math.round(sw*scale), dh = Math.round(sh*scale);
+      ctx.drawImage(img, Math.round((tw-dw)/2), Math.round((th-dh)/2), dw, dh);
+    }
+
+    var outName = buildName() + ".JPG";
+    canvas.toBlob(function(blob){
+      if (!blob){ showErr("Refit failed: the image may be too large for this device."); return; }
+      if (lastURL) URL.revokeObjectURL(lastURL);
+      lastURL = URL.createObjectURL(blob);
+
+      var dl = $("dl");
+      dl.href = lastURL;
+      dl.download = outName;
+
+      $("readout").innerHTML =
+        "Refit complete · <b>" + spec.name + (vertical ? " (vertical)" : "") + "</b> " +
+        (mode==="crop" ? "crop" : "letterbox") +
+        "<br>" + sw + " × " + sh + " → <b>" + tw + " × " + th + "</b> px" +
+        "<br>Saved as <b>" + outName + "</b>";
+      $("result").className = "result on";
+    }, "image/jpeg", 0.92);
+  }
+
+  updatePreview();
+})();
+</script>
