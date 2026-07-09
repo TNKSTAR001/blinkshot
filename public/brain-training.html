@@ -119,9 +119,11 @@
   .q-stimulus { font-size: 34px; line-height: 1.4; letter-spacing: 4px; word-break: break-word; font-weight: 800; }
   .q-stimulus.small { font-size: 24px; letter-spacing: 2px; }
   .stroop-word { font-size: 52px; font-weight: 900; letter-spacing: 2px; }
+  .stroop-list { display: flex; flex-direction: column; gap: 4px; }
+  .stroop-list .stroop-word { font-size: 27px; }
   .sym-grid {
     display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px;
-    font-size: 26px; justify-items: center; max-width: 320px; margin: 0 auto;
+    font-size: 24px; justify-items: center; max-width: 320px; margin: 0 auto;
   }
   .memorize-note { font-size: 13px; color: var(--muted); font-weight: 600; letter-spacing: .5px; }
   .mem-timer { height: 6px; background: rgba(255,255,255,.1); border-radius: 99px; overflow: hidden; margin-top: 4px; }
@@ -134,9 +136,9 @@
     appearance: none; cursor: pointer; width: 100%;
     background: var(--card-2); color: var(--text);
     border: 1.5px solid rgba(255,255,255,.1); border-radius: 16px;
-    font-size: 18px; font-weight: 700; padding: 16px 14px; min-height: 58px;
+    font-size: 17px; font-weight: 700; padding: 15px 14px; min-height: 56px;
     transition: transform .07s ease, background .15s ease, border-color .15s ease;
-    word-break: break-word;
+    word-break: break-word; line-height: 1.35;
   }
   .opt-btn:active { transform: scale(.98); }
   .opt-btn.correct { background: rgba(52,211,153,.2); border-color: var(--good); color: #b6f5db; }
@@ -179,7 +181,7 @@
   <section class="screen active" id="screen-start">
     <div class="logo">🧠</div>
     <h1>Brain <span>Trainer</span></h1>
-    <p class="tagline">50 rapid-fire questions, freshly randomized every round, to sharpen your memory, focus and reasoning.</p>
+    <p class="tagline">50 rapid-fire questions at high-school &amp; college level, freshly randomized every round, to sharpen your memory, focus and reasoning.</p>
     <div class="pillars">
       <div class="pillar"><div class="ico">🧩</div><div class="name">Memory</div><div class="sub">Recall &amp; retain</div></div>
       <div class="pillar"><div class="ico">🎯</div><div class="name">Focus</div><div class="sub">Attention control</div></div>
@@ -257,12 +259,13 @@ const shuffle = arr => {
   return a;
 };
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 /* Build 4 unique options (correct + 3 distractors) and return {options, answerIndex}. */
 function makeOptions(correct, distractorFn) {
   const set = new Set([String(correct)]);
   let guard = 0;
-  while (set.size < 4 && guard++ < 200) set.add(String(distractorFn()));
+  while (set.size < 4 && guard++ < 300) set.add(String(distractorFn()));
   // Extremely defensive fallback so we never render fewer than 4 options.
   let filler = 0;
   while (set.size < 4) set.add(String(correct) + " " + (++filler));
@@ -273,6 +276,8 @@ function makeOptions(correct, distractorFn) {
 /* ======================= data pools ======================= */
 const EMOJIS = ["🍎","🚗","🌙","🐶","🎈","⚽","🌵","🎁","🦋","🍩","🚀","🐳","🎸","🧊","🌻","🍕","⛺","🐢","🎩","🔑","🪁","🍇","🐙","🧲","🥁","🦉","🍄","⛵","🧸","🌈","🐝","🍔","📚","🪐","🦜","🍒","🛼","🧃","🪴","🎳"];
 
+const CONSONANTS = "BCDFGHJKLMNPQRSTVWXZ".split("");
+
 const STROOP_COLORS = [
   { name: "RED",    css: "#ff6b6b" },
   { name: "BLUE",   css: "#5a8bff" },
@@ -282,71 +287,160 @@ const STROOP_COLORS = [
   { name: "ORANGE", css: "#ff9f43" },
 ];
 
+/* Memory word lists: same-domain sets so category knowledge can't shortcut recall. */
 const WORD_GROUPS = [
-  { theme: "fruits",      items: ["Apple","Banana","Mango","Grape","Peach","Cherry"] },
-  { theme: "animals",     items: ["Tiger","Rabbit","Eagle","Shark","Camel","Otter"] },
-  { theme: "vehicles",    items: ["Truck","Scooter","Train","Yacht","Tractor","Bus"] },
-  { theme: "clothing",    items: ["Jacket","Scarf","Boots","Gloves","Sweater","Cap"] },
-  { theme: "instruments", items: ["Guitar","Violin","Drums","Flute","Piano","Trumpet"] },
-  { theme: "furniture",   items: ["Sofa","Table","Wardrobe","Bench","Shelf","Stool"] },
-  { theme: "weather",     items: ["Rain","Snow","Thunder","Breeze","Fog","Hail"] },
-  { theme: "body parts",  items: ["Elbow","Ankle","Shoulder","Wrist","Knee","Chin"] },
+  { theme: "elements",     items: ["Argon","Sodium","Krypton","Iodine","Cobalt","Radium"] },
+  { theme: "bones",        items: ["Femur","Tibia","Clavicle","Sternum","Humerus","Scapula"] },
+  { theme: "lit devices",  items: ["Metaphor","Irony","Allusion","Hyperbole","Simile","Euphemism"] },
+  { theme: "composers",    items: ["Chopin","Vivaldi","Brahms","Handel","Schubert","Haydn"] },
+  { theme: "philosophers", items: ["Plato","Descartes","Nietzsche","Kant","Hume","Locke"] },
+  { theme: "capitals",     items: ["Nairobi","Oslo","Ankara","Lima","Hanoi","Prague"] },
+  { theme: "geometry",     items: ["Rhombus","Trapezoid","Scalene","Isosceles","Vertex","Hypotenuse"] },
+  { theme: "greek",        items: ["Alpha","Sigma","Omega","Epsilon","Lambda","Theta"] },
+  { theme: "organelles",   items: ["Nucleus","Ribosome","Mitochondrion","Lysosome","Vacuole","Chloroplast"] },
+  { theme: "clouds",       items: ["Cumulus","Cirrus","Stratus","Nimbus","Altostratus","Cumulonimbus"] },
 ];
 
 const ANALOGIES = [
-  { q: "Hot is to Cold as Up is to …?",            a: "Down",    d: ["Left","Above","High"] },
-  { q: "Puppy is to Dog as Kitten is to …?",       a: "Cat",     d: ["Lion","Mouse","Cub"] },
-  { q: "Pen is to Write as Knife is to …?",        a: "Cut",     d: ["Sharpen","Cook","Hold"] },
-  { q: "Bird is to Nest as Bee is to …?",          a: "Hive",    d: ["Honey","Flower","Swarm"] },
-  { q: "Eye is to See as Ear is to …?",            a: "Hear",    d: ["Sound","Speak","Smell"] },
-  { q: "Fish is to Water as Bird is to …?",        a: "Air",     d: ["Tree","Wing","Cage"] },
-  { q: "Night is to Moon as Day is to …?",         a: "Sun",     d: ["Sky","Light","Cloud"] },
-  { q: "Shoe is to Foot as Glove is to …?",        a: "Hand",    d: ["Finger","Arm","Wrist"] },
-  { q: "Author is to Book as Painter is to …?",    a: "Painting",d: ["Brush","Canvas","Museum"] },
-  { q: "Key is to Lock as Password is to …?",      a: "Account", d: ["Keyboard","Secret","Letter"] },
-  { q: "Doctor is to Hospital as Teacher is to …?",a: "School",  d: ["Student","Lesson","Office"] },
-  { q: "Ice is to Water as Water is to …?",        a: "Steam",   d: ["Rain","Ocean","Cold"] },
-  { q: "Hungry is to Eat as Tired is to …?",       a: "Sleep",   d: ["Yawn","Run","Work"] },
-  { q: "Caterpillar is to Butterfly as Tadpole is to …?", a: "Frog", d: ["Fish","Snake","Lizard"] },
-  { q: "Book is to Chapter as Song is to …?",      a: "Verse",   d: ["Album","Note","Singer"] },
+  { q: "Ephemeral is to Fleeting as Eternal is to …?",           a: "Everlasting",   d: ["Temporary","Ancient","Delayed"] },
+  { q: "Thermometer is to Temperature as Barometer is to …?",    a: "Pressure",      d: ["Humidity","Altitude","Wind"] },
+  { q: "Cartographer is to Maps as Horologist is to …?",         a: "Clocks",        d: ["Horoscopes","Fossils","Coins"] },
+  { q: "Verbose is to Concise as Arrogant is to …?",             a: "Humble",        d: ["Proud","Talkative","Rude"] },
+  { q: "Oxygen is to Respiration as Sunlight is to …?",          a: "Photosynthesis",d: ["Evaporation","Combustion","Digestion"] },
+  { q: "Mitigate is to Worsen as Expand is to …?",               a: "Contract",      d: ["Enlarge","Extend","Inflate"] },
+  { q: "Archipelago is to Islands as Constellation is to …?",    a: "Stars",         d: ["Planets","Galaxies","Comets"] },
+  { q: "Insulin is to Pancreas as Bile is to …?",                a: "Liver",         d: ["Kidney","Stomach","Spleen"] },
+  { q: "Prologue is to Novel as Overture is to …?",              a: "Opera",         d: ["Painting","Sculpture","Poem"] },
+  { q: "Scalpel is to Surgeon as Chisel is to …?",               a: "Sculptor",      d: ["Carpenter's saw","Painter","Blacksmith's forge"] },
+  { q: "Candid is to Deceptive as Transparent is to …?",         a: "Opaque",        d: ["Clear","Fragile","Translucent"] },
+  { q: "Kinetic is to Motion as Thermal is to …?",               a: "Heat",          d: ["Light","Sound","Electricity"] },
+  { q: "Drought is to Rain as Famine is to …?",                  a: "Food",          d: ["Hunger","Poverty","Disease"] },
+  { q: "Sonnet is to Poem as Waltz is to …?",                    a: "Dance",         d: ["Song","Orchestra","Rhythm"] },
+  { q: "Gaggle is to Geese as Pod is to …?",                     a: "Whales",        d: ["Lions","Crows","Ants"] },
+  { q: "Novice is to Expert as Apprentice is to …?",             a: "Master",        d: ["Student","Trainee","Teacher"] },
+  { q: "Hypothesis is to Theory as Sketch is to …?",             a: "Painting",      d: ["Pencil","Eraser","Frame"] },
+  { q: "Frugal is to Extravagant as Taciturn is to …?",          a: "Talkative",     d: ["Silent","Shy","Careful"] },
+];
+
+/* Odd-one-out: three same-category items plus one from a related but different category. */
+const ODD_SETS = [
+  { same: ["Femur","Tibia","Humerus"],        odd: "Aorta" },
+  { same: ["Mercury","Venus","Jupiter"],      odd: "Titan" },
+  { same: ["Copper","Iron","Zinc"],           odd: "Bronze" },
+  { same: ["Haiku","Sonnet","Limerick"],      odd: "Novel" },
+  { same: ["Nile","Amazon","Danube"],         odd: "Baikal" },
+  { same: ["Violin","Cello","Viola"],         odd: "Clarinet" },
+  { same: ["Mitosis","Meiosis","Cytokinesis"],odd: "Photosynthesis" },
+  { same: ["Kelvin","Celsius","Fahrenheit"],  odd: "Pascal" },
+  { same: ["Cirrus","Cumulus","Stratus"],     odd: "Aurora" },
+  { same: ["Adjective","Adverb","Pronoun"],   odd: "Paragraph" },
+  { same: ["Sahara","Gobi","Mojave"],         odd: "Serengeti" },
+  { same: ["Delta","Estuary","Tributary"],    odd: "Peninsula" },
+  { same: ["Oxygen","Nitrogen","Helium"],     odd: "Ammonia" },
+  { same: ["Byte","Kilobyte","Gigabyte"],     odd: "Gigahertz" },
+  { same: ["Cortex","Cerebellum","Thalamus"], odd: "Ventricle" },
+];
+
+const SYLLOGISMS = [
+  { q: "All physicists are scientists. Maria is a physicist. What must be true?",
+    a: "Maria is a scientist", d: ["Maria is a chemist","All scientists are physicists","Maria may not be a scientist"] },
+  { q: "No reptiles are warm-blooded. All snakes are reptiles. What must be true?",
+    a: "No snakes are warm-blooded", d: ["Some snakes are warm-blooded","All reptiles are snakes","Snakes are not reptiles"] },
+  { q: "If it rains, the match is cancelled. The match was NOT cancelled. What must be true?",
+    a: "It did not rain", d: ["It rained","The match was postponed","It might have rained"] },
+  { q: "Every prime greater than 2 is odd. 97 is a prime greater than 2. What must be true?",
+    a: "97 is odd", d: ["97 is even","97 is not prime","All odd numbers are prime"] },
+  { q: "Some doctors are researchers. All researchers publish papers. What must be true?",
+    a: "Some doctors publish papers", d: ["All doctors publish papers","No doctors publish papers","All who publish are doctors"] },
+  { q: "All squares are rectangles. Figure F is not a rectangle. What must be true?",
+    a: "F is not a square", d: ["F is a square","F is a circle","F might still be a square"] },
+  { q: "If a number is divisible by 6, it is divisible by 3. 21 is divisible by 3. What follows logically?",
+    a: "Nothing — 21 may or may not be divisible by 6", d: ["21 is divisible by 6","21 is not divisible by 3","21 is divisible by 12"] },
+  { q: "The meeting is either Monday or Tuesday. It is not Monday. What must be true?",
+    a: "The meeting is Tuesday", d: ["The meeting is Monday","There is no meeting","The meeting is Wednesday"] },
+  { q: "All mammals breathe air. Whales breathe air. What follows logically?",
+    a: "Nothing — breathing air doesn't prove it's a mammal", d: ["Whales must be mammals","Whales are fish","Whales don't breathe air"] },
+  { q: "No planets are stars. The Sun is a star. What must be true?",
+    a: "The Sun is not a planet", d: ["The Sun is a planet","Some stars are planets","The Sun orbits a planet"] },
+];
+
+const PROBABILITY_QS = [
+  { q: "Two fair coins are flipped. What is the probability of getting two heads?",
+    a: "1/4", d: ["1/2","1/3","3/4"] },
+  { q: "A fair die is rolled once. What is the probability of rolling a number greater than 4?",
+    a: "1/3", d: ["1/2","1/6","2/3"] },
+  { q: "A fair die is rolled once. What is the probability of an even number?",
+    a: "1/2", d: ["1/3","1/6","2/3"] },
+  { q: "Two fair dice are rolled. What is the probability both show the same number?",
+    a: "1/6", d: ["1/12","1/36","1/3"] },
+  { q: "One card is drawn from a standard 52-card deck. What is the probability it is a heart?",
+    a: "1/4", d: ["1/13","1/2","1/3"] },
+  { q: "A fair coin is flipped 3 times. What is the probability of heads every time?",
+    a: "1/8", d: ["1/4","1/6","1/3"] },
 ];
 
 /* ======================= MEMORY generators ======================= */
 
 function genDigitSeq() {
-  const len = randInt(4, 6);
+  const len = randInt(6, 8);
   const digits = Array.from({ length: len }, () => rand(10));
-  const seq = digits.join("");
-  const spaced = digits.join(" ");
+  const reverse = rand(3) === 0;
+  const answerDigits = reverse ? digits.slice().reverse() : digits;
+  const spaced = answerDigits.join(" ");
   const distract = () => {
-    const d = digits.slice();
-    if (rand(2) === 0 && len > 1) {           // swap two neighbours
+    const kind = rand(3);
+    const d = answerDigits.slice();
+    if (kind === 0) {                          // swap two neighbours
       const i = rand(len - 1);
       [d[i], d[i + 1]] = [d[i + 1], d[i]];
-    } else {                                   // change one digit
+    } else if (kind === 1) {                   // change one digit
       const i = rand(len);
       d[i] = (d[i] + randInt(1, 9)) % 10;
+    } else {                                   // wrong-direction trap
+      return (reverse ? digits : digits.slice().reverse()).join(" ");
     }
     return d.join(" ");
   };
   const { options, answerIndex } = makeOptions(spaced, distract);
   return {
     cat: "memory",
-    stimulus: { html: esc(seq.split("").join(" ")), cls: "", duration: 1500 + len * 700 },
-    prompt: "What was the number sequence?",
+    stimulus: { html: esc(digits.join(" ")), cls: len > 6 ? "small" : "", duration: 1400 + len * 650 + (reverse ? 600 : 0) },
+    prompt: reverse ? "What was the sequence in REVERSE order?" : "What was the number sequence?",
+    options, answerIndex,
+  };
+}
+
+function genLetterString() {
+  const letters = shuffle(CONSONANTS).slice(0, 6);
+  const str = letters.join(" ");
+  const distract = () => {
+    const d = letters.slice();
+    if (rand(2) === 0) {
+      const i = rand(d.length - 1);
+      [d[i], d[i + 1]] = [d[i + 1], d[i]];
+    } else {
+      d[rand(d.length)] = pick(CONSONANTS);
+    }
+    return d.join(" ");
+  };
+  const { options, answerIndex } = makeOptions(str, distract);
+  return {
+    cat: "memory",
+    stimulus: { html: esc(str), cls: "", duration: 4300 },
+    prompt: "What was the letter string?",
     options, answerIndex,
   };
 }
 
 function genEmojiPresent() {
   const pool = shuffle(EMOJIS);
-  const shown = pool.slice(0, 5);
-  const unseen = pool.slice(5, 9);
+  const shown = pool.slice(0, 7);
+  const unseen = pool.slice(7, 11);
   const correct = pick(shown);
   const options = shuffle([correct, ...unseen.slice(0, 3)]);
   return {
     cat: "memory",
-    stimulus: { html: shown.map(esc).join(" "), cls: "", duration: 3800 },
+    stimulus: { html: shown.map(esc).join(" "), cls: "small", duration: 4300 },
     prompt: "Which one WAS in the group you just saw?",
     options, answerIndex: options.indexOf(correct),
   };
@@ -354,40 +448,42 @@ function genEmojiPresent() {
 
 function genEmojiMissing() {
   const pool = shuffle(EMOJIS);
-  const shown = pool.slice(0, 5);
-  const intruder = pool[5];
+  const shown = pool.slice(0, 7);
+  const intruder = pool[7];
   const options = shuffle([intruder, ...shuffle(shown).slice(0, 3)]);
   return {
     cat: "memory",
-    stimulus: { html: shown.map(esc).join(" "), cls: "", duration: 3800 },
+    stimulus: { html: shown.map(esc).join(" "), cls: "small", duration: 4300 },
     prompt: "Which one was NOT in the group?",
     options, answerIndex: options.indexOf(intruder),
   };
 }
 
 function genPairAssoc() {
-  const icons = shuffle(EMOJIS).slice(0, 3);
-  const nums = shuffle([1,2,3,4,5,6,7,8,9]).slice(0, 3);
+  const icons = shuffle(EMOJIS).slice(0, 4);
+  const nums = shuffle([1,2,3,4,5,6,7,8,9]).slice(0, 4);
   const pairs = icons.map((ic, i) => ({ ic, n: nums[i] }));
   const target = pick(pairs);
   const { options, answerIndex } = makeOptions(target.n, () => randInt(1, 9));
   return {
     cat: "memory",
-    stimulus: { html: pairs.map(p => `${esc(p.ic)} = ${p.n}`).join(" &nbsp; · &nbsp; "), cls: "small", duration: 4500 },
+    stimulus: { html: pairs.map(p => `${esc(p.ic)} = ${p.n}`).join(" &nbsp;·&nbsp; "), cls: "small", duration: 6200 },
     prompt: `Which number was paired with ${target.ic}?`,
     options, answerIndex,
   };
 }
 
 function genWordRecall() {
+  // Show 5 of a 6-word same-domain list; the held-out 6th word is the intruder,
+  // so knowing the category doesn't help — only genuine recall does.
   const g = pick(WORD_GROUPS);
-  const others = pick(WORD_GROUPS.filter(x => x !== g));
-  const shown = shuffle(g.items).slice(0, 4);
-  const intruder = pick(others.items);
+  const items = shuffle(g.items);
+  const shown = items.slice(0, 5);
+  const intruder = items[5];
   const options = shuffle([intruder, ...shuffle(shown).slice(0, 3)]);
   return {
     cat: "memory",
-    stimulus: { html: shown.map(esc).join(" · "), cls: "small", duration: 4200 },
+    stimulus: { html: shown.map(esc).join(" · "), cls: "small", duration: 5600 },
     prompt: "Which word was NOT on the list?",
     options, answerIndex: options.indexOf(intruder),
   };
@@ -419,14 +515,33 @@ function genStroopWord() {
   };
 }
 
+function genStroopMatch() {
+  const rows = [];
+  let matches = 0;
+  for (let i = 0; i < 4; i++) {
+    const word = pick(STROOP_COLORS);
+    const isMatch = rand(2) === 0;
+    const ink = isMatch ? word : pick(STROOP_COLORS.filter(c => c.name !== word.name));
+    if (isMatch) matches++;
+    rows.push(`<span class="stroop-word" style="color:${ink.css}">${word.name}</span>`);
+  }
+  const { options, answerIndex } = makeOptions(matches, () => rand(5));
+  return {
+    cat: "focus",
+    inline: { html: `<div class="stroop-list">${rows.join("")}</div>` },
+    prompt: "How many words are printed in their OWN color?",
+    options, answerIndex,
+  };
+}
+
 function genCountSymbols() {
-  const pool = shuffle(EMOJIS).slice(0, 4);
+  const pool = shuffle(EMOJIS).slice(0, 5);
   const target = pool[0];
-  const count = randInt(4, 8);
+  const count = randInt(6, 11);
   const cells = Array(count).fill(target);
-  while (cells.length < 24) cells.push(pick(pool.slice(1)));
+  while (cells.length < 30) cells.push(pick(pool.slice(1)));
   const grid = shuffle(cells);
-  const { options, answerIndex } = makeOptions(count, () => Math.max(1, count + randInt(-3, 3)));
+  const { options, answerIndex } = makeOptions(count, () => clamp(count + pick([-2, -1, 1, 2]), 1, 30));
   return {
     cat: "focus",
     inline: { html: `<div class="sym-grid">${grid.map(g => `<span>${esc(g)}</span>`).join("")}</div>` },
@@ -436,16 +551,14 @@ function genCountSymbols() {
 }
 
 function genFindUnique() {
-  const pool = shuffle(EMOJIS).slice(0, 4);
+  const pool = shuffle(EMOJIS).slice(0, 5);
   const unique = pool[0];
-  const cells = [unique];
   const fillers = pool.slice(1);
-  while (cells.length < 18) cells.push(pick(fillers));
-  // Ensure each filler appears at least twice so only `unique` appears once.
-  fillers.forEach(f => { cells.push(f, f); });
-  const grid = shuffle(cells).slice(0, 24);
-  if (!grid.includes(unique)) grid[rand(grid.length)] = unique;
-  const options = shuffle(pool.slice());
+  const cells = [unique];
+  fillers.forEach(f => cells.push(f, f));   // every filler appears at least twice
+  while (cells.length < 30) cells.push(pick(fillers));
+  const grid = shuffle(cells);
+  const options = shuffle([unique, ...shuffle(fillers).slice(0, 3)]);
   return {
     cat: "focus",
     inline: { html: `<div class="sym-grid">${grid.map(g => `<span>${esc(g)}</span>`).join("")}</div>` },
@@ -455,19 +568,30 @@ function genFindUnique() {
 }
 
 function genOddLetter() {
-  const pairs = [["O","Q"],["6","9"],["E","F"],["M","W"],["b","d"],["S","5"],["I","l"],["Z","2"],["C","G"],["u","v"]];
+  const pairs = [["O","Q"],["6","9"],["E","F"],["M","W"],["b","d"],["S","5"],["I","l"],["Z","2"],["C","G"],["u","v"],["8","B"],["n","m"]];
   const [main, odd] = shuffle(pick(pairs));
-  const size = 24;
+  const size = 36, rowLen = 6;
   const idx = rand(size);
   const cells = Array.from({ length: size }, (_, i) => (i === idx ? odd : main));
-  const rowLen = 6;
   const row = Math.floor(idx / rowLen) + 1;
   const correct = `Row ${row}`;
   const { options, answerIndex } = makeOptions(correct, () => `Row ${randInt(1, size / rowLen)}`);
   return {
     cat: "focus",
-    inline: { html: `<div class="sym-grid" style="font-size:22px;font-weight:800">${cells.map(c => `<span>${esc(c)}</span>`).join("")}</div>` },
+    inline: { html: `<div class="sym-grid" style="font-size:20px;font-weight:800">${cells.map(c => `<span>${esc(c)}</span>`).join("")}</div>` },
     prompt: `One "${odd}" is hiding among the "${main}"s. Which row is it in?`,
+    options, answerIndex,
+  };
+}
+
+function genOddDigitCount() {
+  const digits = Array.from({ length: 12 }, () => rand(10));
+  const count = digits.filter(d => d % 2 === 1).length;
+  const { options, answerIndex } = makeOptions(count, () => clamp(count + pick([-2, -1, 1, 2]), 0, 12));
+  return {
+    cat: "focus",
+    inline: { html: `<span class="q-stimulus small" style="display:block;letter-spacing:5px">${digits.join("")}</span>` },
+    prompt: "How many ODD digits are in the number above?",
     options, answerIndex,
   };
 }
@@ -475,32 +599,43 @@ function genOddLetter() {
 /* ======================= REASONING generators ======================= */
 
 function genNumberSeries() {
-  const type = rand(5);
-  let terms = [], next = 0, hint = "";
-  if (type === 0) {                       // arithmetic
-    const start = randInt(1, 20), step = randInt(2, 9);
-    terms = [0,1,2,3].map(i => start + i * step);
-    next = start + 4 * step;
-  } else if (type === 1) {                // doubling
-    const start = randInt(2, 6);
-    terms = [start, start*2, start*4, start*8];
-    next = start * 16;
-  } else if (type === 2) {                // growing step (+2, +3, +4…)
-    const start = randInt(1, 10);
-    let s = randInt(2, 4), t = start;
+  const type = rand(7);
+  let terms = [], next = 0;
+  if (type === 0) {                       // alternating +a, +b
+    const a = randInt(3, 9), b = randInt(11, 19), start = randInt(2, 15);
+    terms = [start, start + a, start + a + b, start + 2*a + b, start + 2*a + 2*b];
+    next = start + 3*a + 2*b;
+  } else if (type === 1) {                // Fibonacci-style (each term = sum of previous two)
+    const a = randInt(1, 5), b = randInt(2, 7);
+    terms = [a, b, a + b, a + 2*b, 2*a + 3*b];
+    next = 3*a + 5*b;
+  } else if (type === 2) {                // ×2 ± c recurrence
+    const c = pick([1, -1, 2, 3]);
+    let t = randInt(2, 6);
     terms = [t];
-    for (let i = 0; i < 3; i++) { t += s; terms.push(t); s++; }
+    for (let i = 0; i < 3; i++) { t = t * 2 + c; terms.push(t); }
+    next = t * 2 + c;
+  } else if (type === 3) {                // shifted squares: n² + k
+    const off = randInt(2, 6), k = randInt(-3, 3);
+    terms = [0,1,2,3].map(i => (i + off) * (i + off) + k);
+    next = (4 + off) * (4 + off) + k;
+  } else if (type === 4) {                // consecutive primes
+    const primes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71];
+    const s = rand(primes.length - 5);
+    terms = primes.slice(s, s + 4);
+    next = primes[s + 4];
+  } else if (type === 5) {                // growing gap: +s, +(s+2), +(s+4)…
+    const start = randInt(1, 12);
+    let s = randInt(2, 5), t = start;
+    terms = [t];
+    for (let i = 0; i < 3; i++) { t += s; terms.push(t); s += 2; }
     next = t + s;
-  } else if (type === 3) {                // squares
-    const off = randInt(1, 4);
-    terms = [0,1,2,3].map(i => (i + off) * (i + off));
-    next = (4 + off) * (4 + off);
-  } else {                                // descending arithmetic
-    const step = randInt(3, 9), start = randInt(50, 90);
-    terms = [0,1,2,3].map(i => start - i * step);
-    next = start - 4 * step;
+  } else {                                // geometric ×3
+    const start = randInt(1, 4);
+    terms = [start, start * 3, start * 9, start * 27];
+    next = start * 81;
   }
-  const spread = Math.max(2, Math.round(Math.abs(next) * 0.15));
+  const spread = Math.max(3, Math.round(Math.abs(next) * 0.15));
   const { options, answerIndex } = makeOptions(next, () => {
     let d = 0;
     while (d === 0) d = randInt(-spread, spread);
@@ -508,21 +643,55 @@ function genNumberSeries() {
   });
   return {
     cat: "reasoning",
-    inline: { html: `<span class="q-stimulus small" style="display:block">${terms.join(", ")}, <b style="color:var(--accent-2)">?</b></span>${hint}` },
+    inline: { html: `<span class="q-stimulus small" style="display:block">${terms.join(", ")}, <b style="color:var(--accent-2)">?</b></span>` },
     prompt: "What number comes next?",
     options, answerIndex,
   };
 }
 
 function genLetterSeries() {
-  const step = randInt(1, 3);
-  const start = randInt(0, 25 - step * 4);
   const A = 65;
-  const letters = [0,1,2,3].map(i => String.fromCharCode(A + start + i * step));
-  const next = String.fromCharCode(A + start + 4 * step);
+  const kind = rand(3);
+  if (kind === 0) {                       // alternating steps +s1, +s2
+    const s1 = randInt(1, 3), s2 = randInt(2, 4);
+    const start = randInt(0, 25 - (3 * s1 + 2 * s2));
+    let v = start;
+    const letters = [v];
+    [s1, s2, s1, s2].forEach(s => { v += s; letters.push(v); });
+    const nextIdx = v + s1;
+    const next = String.fromCharCode(A + nextIdx);
+    const { options, answerIndex } = makeOptions(next, () =>
+      String.fromCharCode(A + clamp(nextIdx + randInt(-3, 3), 0, 25)));
+    return {
+      cat: "reasoning",
+      inline: { html: `<span class="q-stimulus" style="display:block">${letters.map(x => String.fromCharCode(A + x)).join(" · ")} · <b style="color:var(--accent-2)">?</b></span>` },
+      prompt: "Which letter comes next?",
+      options, answerIndex,
+    };
+  }
+  if (kind === 1) {                       // mirror pairs: AZ, BY, CX, DW → EV
+    const startI = rand(6);
+    const pair = k => String.fromCharCode(A + startI + k) + String.fromCharCode(A + 25 - startI - k);
+    const shown = [0,1,2,3].map(pair);
+    const next = pair(4);
+    const { options, answerIndex } = makeOptions(next, () =>
+      String.fromCharCode(A + clamp(startI + 4 + randInt(-1, 1), 0, 25)) +
+      String.fromCharCode(A + clamp(25 - startI - 4 + randInt(-1, 1), 0, 25)));
+    return {
+      cat: "reasoning",
+      inline: { html: `<span class="q-stimulus" style="display:block">${shown.join(" · ")} · <b style="color:var(--accent-2)">?</b></span>` },
+      prompt: "Which letter pair comes next?",
+      options, answerIndex,
+    };
+  }
+  // descending with fixed step
+  const step = randInt(2, 4);
+  const start = randInt(4 * step, 25);
+  const letters = [0,1,2,3].map(i => String.fromCharCode(A + start - i * step));
+  const nextIdx = start - 4 * step;
+  const next = String.fromCharCode(A + nextIdx);
   const { options, answerIndex } = makeOptions(next, () =>
-    String.fromCharCode(A + Math.min(25, Math.max(0, start + 4 * step + randInt(-3, 3))))
-  );
+    String.fromCharCode(A + clamp(nextIdx + randInt(-3, 3), 0, 25)));
   return {
     cat: "reasoning",
     inline: { html: `<span class="q-stimulus" style="display:block">${letters.join(" · ")} · <b style="color:var(--accent-2)">?</b></span>` },
@@ -532,15 +701,12 @@ function genLetterSeries() {
 }
 
 function genOddWordOut() {
-  const g = pick(WORD_GROUPS);
-  const other = pick(WORD_GROUPS.filter(x => x !== g));
-  const same = shuffle(g.items).slice(0, 3);
-  const odd = pick(other.items);
-  const options = shuffle([odd, ...same]);
+  const set = pick(ODD_SETS);
+  const options = shuffle([set.odd, ...set.same]);
   return {
     cat: "reasoning",
-    prompt: "Which word does NOT belong with the others?",
-    options, answerIndex: options.indexOf(odd),
+    prompt: "Which one does NOT belong with the others?",
+    options, answerIndex: options.indexOf(set.odd),
   };
 }
 
@@ -554,55 +720,97 @@ function genAnalogy() {
   };
 }
 
+function genSyllogism() {
+  const s = pick(SYLLOGISMS);
+  const options = shuffle([s.a, ...s.d]);
+  return {
+    cat: "reasoning",
+    prompt: s.q,
+    options, answerIndex: options.indexOf(s.a),
+  };
+}
+
 function genMentalMath() {
-  const type = rand(4);
+  const type = rand(7);
   let prompt = "", answer = 0;
-  if (type === 0) {
-    const price = randInt(12, 68), pay = Math.ceil(price / 10) * 10 + pick([0, 10, 20]);
-    answer = pay - price;
-    prompt = `A snack costs $${price}. You pay with $${pay}. How much change do you get?`;
-  } else if (type === 1) {
-    const have = randInt(8, 20), lose = randInt(2, 6), gain = randInt(3, 9);
-    answer = have - lose + gain;
-    prompt = `You have ${have} apples, give away ${lose}, then pick ${gain} more. How many now?`;
-  } else if (type === 2) {
-    const x = randInt(3, 12), y = randInt(2, 9);
-    answer = x * 2 + y;
-    prompt = `Double ${x}, then add ${y}. What do you get?`;
-  } else {
-    const kids = randInt(3, 6), each = randInt(3, 8);
-    answer = kids * each;
-    prompt = `${kids} friends each collect ${each} shells. How many shells in total?`;
+  if (type === 0) {                       // percent of a number (integer by construction)
+    const p = pick([15, 20, 25, 30, 40, 60, 75]);
+    const n = randInt(3, 12) * 20;
+    answer = p * n / 100;
+    prompt = `What is ${p}% of ${n}?`;
+  } else if (type === 1) {                // linear equation
+    const a = randInt(2, 9), x = randInt(2, 12);
+    let b = 0;
+    while (b === 0) b = randInt(-9, 9);
+    const c = a * x + b;
+    answer = x;
+    prompt = `Solve for x:  ${a}x ${b > 0 ? "+" : "−"} ${Math.abs(b)} = ${c}`;
+  } else if (type === 2) {                // average of four numbers
+    const avg = randInt(6, 25), d1 = randInt(1, 4), d2 = randInt(1, 5);
+    const nums = shuffle([avg + d1, avg - d1, avg + d2, avg - d2]);
+    answer = avg;
+    prompt = `What is the average (mean) of ${nums.join(", ")}?`;
+  } else if (type === 3) {                // percent increase
+    const f = pick([20, 40, 60, 80]);
+    const inc = pick([10, 25, 50, 75, 100]);
+    const t = f + f * inc / 100;
+    prompt = `A price rises from $${f} to $${t}. What is the percent increase?`;
+    const { options, answerIndex } = makeOptions(inc + "%", () => pick([5,10,15,20,25,30,40,50,60,75,100,150]) + "%");
+    return { cat: "reasoning", prompt, options, answerIndex };
+  } else if (type === 4) {                // average speed
+    const speed = randInt(30, 80), hours = randInt(2, 4);
+    answer = speed;
+    prompt = `A car covers ${speed * hours} miles in ${hours} hours. What is its average speed in mph?`;
+  } else if (type === 5) {                // probability (curated)
+    const p = pick(PROBABILITY_QS);
+    const options = shuffle([p.a, ...p.d]);
+    return { cat: "reasoning", prompt: p.q, options, answerIndex: options.indexOf(p.a) };
+  } else {                                // permutations
+    const n = randInt(3, 5);
+    const fact = [1, 1, 2, 6, 24, 120];
+    answer = fact[n];
+    prompt = `How many different ways can ${n} distinct books be arranged on a shelf?`;
   }
+  const spread = Math.max(3, Math.round(answer * 0.25));
   const { options, answerIndex } = makeOptions(answer, () => {
     let d = 0;
-    while (d === 0) d = randInt(-4, 4);
+    while (d === 0) d = randInt(-spread, spread);
     return Math.max(0, answer + d);
   });
   return { cat: "reasoning", prompt, options, answerIndex };
 }
 
 function genComparison() {
-  // Build four simple expressions with distinct values and ask for the largest.
-  const exprs = [];
-  const mk = () => {
-    const x = randInt(4, 12), y = randInt(2, 9);
+  // Four values as fractions / percents / decimals, all at least 0.04 apart.
+  const usedText = new Set();
+  const forms = [];
+  let guard = 0;
+  while (forms.length < 4 && guard++ < 400) {
     const kind = rand(3);
-    if (kind === 0) return { t: `${x} + ${y}`, v: x + y };
-    if (kind === 1) return { t: `${x + y} − ${y}`, v: x };
-    return { t: `${x} × 2`, v: x * 2 };
-  };
-  const seen = new Set();
-  while (exprs.length < 4) {
-    const e = mk();
-    if (!seen.has(e.v) && !seen.has(e.t)) { seen.add(e.v); seen.add(e.t); exprs.push(e); }
+    let t, v;
+    if (kind === 0) {
+      const den = pick([4, 5, 8, 10, 20, 25]);
+      const num = randInt(1, den - 1);
+      v = num / den; t = `${num}/${den}`;
+    } else if (kind === 1) {
+      const p = randInt(8, 96);
+      v = p / 100; t = `${p}%`;
+    } else {
+      v = randInt(5, 95) / 100; t = v.toFixed(2);
+    }
+    if (usedText.has(t)) continue;
+    if (forms.some(f => Math.abs(f.v - v) < 0.04)) continue;
+    usedText.add(t);
+    forms.push({ t, v });
   }
-  const maxV = Math.max(...exprs.map(e => e.v));
-  const correct = exprs.find(e => e.v === maxV);
-  const options = shuffle(exprs.map(e => e.t));
+  if (forms.length < 4) return genMentalMath();  // vanishingly rare; regenerate
+  const wantLargest = rand(2) === 0;
+  const targetV = wantLargest ? Math.max(...forms.map(f => f.v)) : Math.min(...forms.map(f => f.v));
+  const correct = forms.find(f => f.v === targetV);
+  const options = shuffle(forms.map(f => f.t));
   return {
     cat: "reasoning",
-    prompt: "Which of these has the LARGEST value?",
+    prompt: `Which of these values is the ${wantLargest ? "LARGEST" : "SMALLEST"}?`,
     options, answerIndex: options.indexOf(correct.t),
   };
 }
@@ -610,9 +818,9 @@ function genComparison() {
 /* ======================= quiz assembly ======================= */
 
 const GENERATORS = {
-  memory:    [genDigitSeq, genEmojiPresent, genEmojiMissing, genPairAssoc, genWordRecall],
-  focus:     [genStroopColor, genStroopWord, genCountSymbols, genFindUnique, genOddLetter],
-  reasoning: [genNumberSeries, genLetterSeries, genOddWordOut, genAnalogy, genMentalMath, genComparison],
+  memory:    [genDigitSeq, genLetterString, genEmojiPresent, genEmojiMissing, genPairAssoc, genWordRecall],
+  focus:     [genStroopColor, genStroopWord, genStroopMatch, genCountSymbols, genFindUnique, genOddLetter, genOddDigitCount],
+  reasoning: [genNumberSeries, genLetterSeries, genOddWordOut, genAnalogy, genSyllogism, genMentalMath, genComparison],
 };
 
 const TOTAL = 50;
