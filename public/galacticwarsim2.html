@@ -188,6 +188,9 @@
   .card .photo-preview img {
     width: 100%; height: 100%; object-fit: contain;
   }
+  .card .photo-preview .preview-err {
+    color: var(--muted); font-size: 12px; text-align: center; padding: 12px;
+  }
   .empty {
     text-align: center; color: var(--muted); padding: 70px 20px;
     border: 1px dashed var(--line); border-radius: var(--radius);
@@ -639,14 +642,43 @@
       eye.addEventListener("click", function(e){
         e.stopPropagation();
         if(preview.classList.toggle("open") && !preview._img){
-          var pim = el("img"); pim.alt = img.alt; pim.loading = "lazy";
-          pim.referrerPolicy = "no-referrer";
-          pim.onerror = function(){
-            if(!pim._triedThumb && p.thumb && pim.src!==p.thumb){ pim._triedThumb=true; pim.src=p.thumb; }
-            else { pim.onerror=null; }
-          };
-          pim.src = remote ? (p.full||p.thumb) : objUrl(p);
+          // alt stays empty so a failed load never renders a wall of tag text
+          var pim = el("img"); pim.alt = ""; pim.referrerPolicy = "no-referrer";
           preview._img = pim; preview.appendChild(pim);
+          var fail = function(){
+            pim.style.display = "none";
+            if(!preview._err){
+              preview._err = el("div","preview-err");
+              preview._err.textContent = "⚠ Image failed to load";
+              preview.appendChild(preview._err);
+            }
+          };
+          var show = function(url){
+            pim.style.display = "";
+            if(preview._err){ preview._err.remove(); preview._err = null; }
+            pim.src = url;
+          };
+          pim.onerror = fail;
+          if(!remote){ pim.src = objUrl(p); return; }
+          // Start from whatever the card thumbnail already managed to load (it's
+          // cached and known-good), then probe full → thumb and upgrade to the
+          // best source that actually loads.
+          var gridSrc = (img.style.visibility!=="hidden" && img.complete && img.naturalWidth>0)
+            ? (img.currentSrc || img.src) : "";
+          if(gridSrc) pim.src = gridSrc;
+          var want = [p.full, p.thumb].filter(function(u,i,a){ return u && a.indexOf(u)===i; });
+          var gi = want.indexOf(gridSrc);
+          var chain = gi >= 0 ? want.slice(0, gi) : want;
+          var ci = 0;
+          (function tryNext(){
+            if(ci >= chain.length){ if(!gridSrc) fail(); return; }
+            var url = chain[ci++];
+            var probe = new Image();
+            probe.referrerPolicy = "no-referrer";
+            probe.onload = function(){ show(url); };
+            probe.onerror = tryNext;
+            probe.src = url;
+          })();
         }
       });
       card.appendChild(img); card.appendChild(band); card.appendChild(tc); card.appendChild(info);
