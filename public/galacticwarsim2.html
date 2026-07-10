@@ -315,6 +315,7 @@
       <option value="old">Oldest</option>
       <option value="tags">Most tags</option>
     </select>
+    <button class="btn small ghost" id="fullscreen-btn" title="Toggle fullscreen">⛶ Fullscreen</button>
     <button class="btn small ghost" id="boorus-open">🌐 Boorus</button>
     <button class="btn small" id="upload-open">＋ Upload</button>
     <button class="btn small ghost" id="lock-btn" style="display:none;">Lock</button>
@@ -1069,18 +1070,31 @@
      shells) and otherwise grab the first tap, click, or keypress. Once
      fullscreen has been reached we stop asking, so leaving it with Esc
      afterwards isn't fought. */
+  function isFullscreen(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
   function goFullscreen(){
-    if(document.fullscreenElement || document.webkitFullscreenElement) return;
+    if(isFullscreen()) return;
     var d=document.documentElement;
     var req=d.requestFullscreen||d.webkitRequestFullscreen||d.msRequestFullscreen;
     if(!req) return;
     try{ var r=req.call(d); if(r && r.catch) r.catch(function(){}); }catch(_){}
   }
+  function exitFullscreen(){
+    var ex=document.exitFullscreen||document.webkitExitFullscreen||document.msExitFullscreen;
+    if(!ex) return;
+    try{ var r=ex.call(document); if(r && r.catch) r.catch(function(){}); }catch(_){}
+  }
+  function toggleFullscreen(){ if(isFullscreen()) exitFullscreen(); else goFullscreen(); }
   var fsWanted=true;
-  function fsOnGesture(){ if(fsWanted) goFullscreen(); }
+  function fsOnGesture(e){
+    // the toggle button manages fullscreen itself — don't race its click
+    if(e.target && e.target.closest && e.target.closest("#fullscreen-btn")) return;
+    if(fsWanted) goFullscreen();
+  }
   ["fullscreenchange","webkitfullscreenchange"].forEach(function(ev){
     document.addEventListener(ev, function(){
-      if(document.fullscreenElement || document.webkitFullscreenElement) fsWanted=false;
+      if(isFullscreen()) fsWanted=false;
+      var b=$("fullscreen-btn");
+      if(b) b.textContent = isFullscreen() ? "⛶ Exit fullscreen" : "⛶ Fullscreen";
     });
   });
   ["pointerdown","keydown"].forEach(function(ev){
@@ -1402,6 +1416,7 @@
     m.addEventListener("click", function(e){ if(e.target===m) closeModals(); });
   });
 
+  $("fullscreen-btn").addEventListener("click", toggleFullscreen);
   $("unlock-btn").addEventListener("click", unlock);
   $("pass").addEventListener("keydown", function(e){ if(e.key==="Enter") unlock(); });
   $("lock-btn").addEventListener("click", lock);
