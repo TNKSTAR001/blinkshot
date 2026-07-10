@@ -152,9 +152,15 @@
   }
   .card:hover { transform: translateY(-2px); border-color: var(--accent); }
   .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .card .rate-band { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  /* images are blacked out by default — the eye button reveals them */
+  .card .shroud {
+    position: absolute; inset: 0; z-index: 1; background: #000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card .shroud::before { content: "👁"; font-size: 22px; opacity: .22; }
+  .card .rate-band { position: absolute; top: 0; left: 0; right: 0; height: 3px; z-index: 2; }
   .card .tagcount {
-    position: absolute; bottom: 6px; right: 6px;
+    position: absolute; bottom: 6px; right: 6px; z-index: 2;
     background: rgba(7,9,18,.82); color: var(--txt); font-size: 11px;
     padding: 2px 6px; border-radius: 6px;
   }
@@ -683,7 +689,8 @@
           })();
         }
       });
-      card.appendChild(img); card.appendChild(band); card.appendChild(tc); card.appendChild(info);
+      card.appendChild(img); card.appendChild(el("div","shroud"));
+      card.appendChild(band); card.appendChild(tc); card.appendChild(info);
       card.appendChild(preview); card.appendChild(eye);
       card.title = "Double-click to download";
       // Double-click the image to download it — no preview pop-up.
