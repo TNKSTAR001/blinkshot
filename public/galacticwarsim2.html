@@ -1064,10 +1064,34 @@
       $("pass").value="";
     }
   }
+  /* Enter fullscreen as soon as possible. Browsers only honour the request
+     from a user gesture, so try immediately (works in kiosk / app-webview
+     shells) and otherwise grab the first tap, click, or keypress. Once
+     fullscreen has been reached we stop asking, so leaving it with Esc
+     afterwards isn't fought. */
+  function goFullscreen(){
+    if(document.fullscreenElement || document.webkitFullscreenElement) return;
+    var d=document.documentElement;
+    var req=d.requestFullscreen||d.webkitRequestFullscreen||d.msRequestFullscreen;
+    if(!req) return;
+    try{ var r=req.call(d); if(r && r.catch) r.catch(function(){}); }catch(_){}
+  }
+  var fsWanted=true;
+  function fsOnGesture(){ if(fsWanted) goFullscreen(); }
+  ["fullscreenchange","webkitfullscreenchange"].forEach(function(ev){
+    document.addEventListener(ev, function(){
+      if(document.fullscreenElement || document.webkitFullscreenElement) fsWanted=false;
+    });
+  });
+  ["pointerdown","keydown"].forEach(function(ev){
+    document.addEventListener(ev, fsOnGesture, true);
+  });
+
   function enterApp(){
     $("lock").style.display="none";
     $("app").style.display="block";
     $("watermark").style.display="block";
+    goFullscreen();
     load();
   }
   function lock(){
