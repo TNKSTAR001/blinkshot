@@ -626,9 +626,12 @@
       var img = el("img"); img.alt = p.tags.join(" "); img.loading = "lazy";
       img.referrerPolicy = "no-referrer";
       img.onerror = function(){
-        // some booru CDNs block the thumb URL — fall back to the full image, then give up
-        if(!img._triedFull && p.full && p.full!==p.thumb){ img._triedFull=true; img.src=p.full; }
-        else { img.onerror=null; img.style.visibility="hidden"; }
+        // some booru CDNs block the thumb URL — fall back to the full image,
+        // then retry through the CORS proxy, then give up
+        if(!img._triedFull && p.full && p.full!==p.thumb){ img._triedFull=true; img.src=p.full; return; }
+        var pu = img._triedProxy ? "" : imgProxyUrl(p.thumb||p.full);
+        if(pu){ img._triedProxy=true; img.src=pu; return; }
+        img.onerror=null; img.style.visibility="hidden";
       };
       img.src = p.thumb;
       var tc = el("div","tagcount"); tc.textContent = p.tags.length + "🏷";
@@ -645,14 +648,11 @@
           // alt stays empty so a failed load never renders a wall of tag text
           var pim = el("img"); pim.alt = ""; pim.referrerPolicy = "no-referrer";
           preview._img = pim; preview.appendChild(pim);
-          var fail = function(){
-            pim.style.display = "none";
-            if(!preview._err){
-              preview._err = el("div","preview-err");
-              preview._err.textContent = "⚠ Image failed to load";
-              preview.appendChild(preview._err);
-            }
+          var note = function(txt){
+            if(!preview._err){ preview._err = el("div","preview-err"); preview.appendChild(preview._err); }
+            preview._err.textContent = txt;
           };
+          var fail = function(){ pim.style.display = "none"; note("⚠ Image failed to load"); };
           var show = function(url){
             pim.style.display = "";
             if(preview._err){ preview._err.remove(); preview._err = null; }
@@ -661,12 +661,14 @@
           pim.onerror = fail;
           if(!remote){ pim.src = objUrl(p); return; }
           // Start from whatever the card thumbnail already managed to load (it's
-          // cached and known-good), then probe full → thumb and upgrade to the
-          // best source that actually loads.
+          // cached and known-good), then probe better sources — the full image
+          // directly, then through the CORS proxy for CDNs that block hotlinks —
+          // and upgrade to the best one that actually loads.
           var gridSrc = (img.style.visibility!=="hidden" && img.complete && img.naturalWidth>0)
             ? (img.currentSrc || img.src) : "";
-          if(gridSrc) pim.src = gridSrc;
-          var want = [p.full, p.thumb].filter(function(u,i,a){ return u && a.indexOf(u)===i; });
+          if(gridSrc) pim.src = gridSrc; else note("Loading…");
+          var want = [p.full, imgProxyUrl(p.full), p.thumb, imgProxyUrl(p.thumb)]
+            .filter(function(u,i,a){ return u && a.indexOf(u)===i; });
           var gi = want.indexOf(gridSrc);
           var chain = gi >= 0 ? want.slice(0, gi) : want;
           var ci = 0;
@@ -848,11 +850,14 @@
     var pmImg = $("pm-img");
     pmImg.referrerPolicy = "no-referrer";
     pmImg.onerror = remote ? function(){
-      // if the full image is blocked/broken, fall back to the thumbnail
-      if(!pmImg._triedThumb && p.thumb && p.thumb!==p.full){ pmImg._triedThumb=true; pmImg.src=p.thumb; }
-      else { pmImg.onerror=null; }
+      // if the full image is blocked/broken, fall back to the thumbnail,
+      // then retry the full image through the CORS proxy
+      if(!pmImg._triedThumb && p.thumb && p.thumb!==p.full){ pmImg._triedThumb=true; pmImg.src=p.thumb; return; }
+      var pu = pmImg._triedProxy ? "" : imgProxyUrl(p.full||p.thumb);
+      if(pu){ pmImg._triedProxy=true; pmImg.src=pu; return; }
+      pmImg.onerror=null;
     } : null;
-    pmImg._triedThumb = false;
+    pmImg._triedThumb = false; pmImg._triedProxy = false;
     pmImg.src = remote ? p.full : objUrl(p);
     $("pm-date").textContent = fmtDate(p.createdAt);
     $("pm-size").textContent = (p.w&&p.h? p.w+"×"+p.h : "") + (p.bytes? (p.w&&p.h?"  ·  ":"")+fmtBytes(p.bytes) : "") || (remote?"remote":"—");
@@ -1235,6 +1240,16 @@
     if(!proxy) return url;
     if(proxy.indexOf("{url}")>=0) return proxy.replace("{url}", encodeURIComponent(url));
     return proxy + encodeURIComponent(url);
+  }
+  // Proxied variant of an image URL, for when the CDN blocks direct <img> loads
+  // (hotlink protection). Respects the active booru's proxy setting; "" when the
+  // booru is pinned direct-only or the URL isn't proxyable.
+  function imgProxyUrl(url){
+    if(!url || /^(data|blob):/i.test(url)) return "";
+    var b=activeBooru(), pr=((b&&b.proxy)||"").trim();
+    if(/^(none|direct)$/i.test(pr)) return "";
+    var proxy=(pr && !/^auto$/i.test(pr)) ? pr : DEFAULT_CORS_PROXY;
+    return wrapProxy(proxy, url);
   }
   function fetchJson(url){
     return fetch(url, { headers:{ "Accept":"application/json" }, referrerPolicy:"no-referrer" })
